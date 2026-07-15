@@ -98,13 +98,18 @@ class HealthcareDiagnosticAgent:
         self.state = AgentState.PLANNING
         patient = self.memory.current_patient
 
-        # Aggregate confidence from multiple modules
-        confidences = [
-            v.get('confidence', 0)
-            for v in diagnosis_results.values()
-            if isinstance(v, dict) and 'confidence' in v
-        ]
-        avg_confidence = sum(confidences)/len(confidences) if confidences else 0.5
+        # Aggregate confidence from ALL registered modules
+        # (treat missing/invalid confidence as 0 to satisfy spec)
+        confidences = []
+        for module_name in self._modules.keys():
+            module_result = diagnosis_results.get(module_name, {})
+            if isinstance(module_result, dict):
+                conf = module_result.get('confidence', 0)
+                confidences.append(conf if isinstance(conf, (int, float)) else 0)
+            else:
+                confidences.append(0)
+
+        avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
 
         # Determine urgency
         urgency = self._assess_urgency(patient, avg_confidence)
