@@ -1,0 +1,374 @@
+
+
+from __future__ import annotations
+
+from collections import deque
+from dataclasses import dataclass, field
+from typing import Dict, FrozenSet, List, Optional, Set
+
+ACTIONS: List[Dict] = [
+    
+    {
+        "name": "IsolatePatient",
+        "precond": {"PATIENT_PRESENT", "CONTAGIOUS_DISEASE"},
+        "delete": {"CONTAGIOUS_DISEASE"},
+        "add": {"PATIENT_ISOLATED"},
+        "cost": 1,
+        "duration": "14 days",
+    },
+    
+    {
+        "name": "OrderPCRTest",
+        "precond": {"PATIENT_PRESENT", "COVID_SUSPECTED"},
+        "delete": {"COVID_SUSPECTED"},
+        "add": {"PCR_PENDING"},
+        "cost": 1,
+        "duration": "24 hours",
+    },
+    {
+        "name": "ReceivePCRResult",
+        "precond": {"PCR_PENDING"},
+        "delete": {"PCR_PENDING"},
+        "add": {"COVID_CONFIRMED"},
+        "cost": 1,
+        "duration": "24 hours",
+    },
+    {
+        "name": "OrderRapidFluTest",
+        "precond": {"PATIENT_PRESENT", "FLU_SUSPECTED"},
+        "delete": {"FLU_SUSPECTED"},
+        "add": {"RAPID_TEST_PENDING"},
+        "cost": 1,
+        "duration": "30 minutes",
+    },
+    {
+        "name": "ReceiveRapidTestResult",
+        "precond": {"RAPID_TEST_PENDING"},
+        "delete": {"RAPID_TEST_PENDING"},
+        "add": {"FLU_CONFIRMED"},
+        "cost": 1,
+        "duration": "30 minutes",
+    },
+    {
+        "name": "OrderDengueNS1Test",
+        "precond": {"PATIENT_PRESENT", "DENGUE_SUSPECTED"},
+        "delete": {"DENGUE_SUSPECTED"},
+        "add": {"NS1_TEST_PENDING"},
+        "cost": 1,
+        "duration": "4 hours",
+    },
+    {
+        "name": "ReceiveNS1TestResult",
+        "precond": {"NS1_TEST_PENDING"},
+        "delete": {"NS1_TEST_PENDING"},
+        "add": {"DENGUE_CONFIRMED"},
+        "cost": 1,
+        "duration": "4 hours",
+    },
+    {
+        "name": "OrderBloodSmearTest",
+        "precond": {"PATIENT_PRESENT", "MALARIA_SUSPECTED"},
+        "delete": {"MALARIA_SUSPECTED"},
+        "add": {"BLOOD_SMEAR_PENDING"},
+        "cost": 1,
+        "duration": "2 hours",
+    },
+    {
+        "name": "ReceiveBloodSmearResult",
+        "precond": {"BLOOD_SMEAR_PENDING"},
+        "delete": {"BLOOD_SMEAR_PENDING"},
+        "add": {"MALARIA_CONFIRMED"},
+        "cost": 1,
+        "duration": "2 hours",
+    },
+    {
+        "name": "OrderWidalTest",
+        "precond": {"PATIENT_PRESENT", "TYPHOID_SUSPECTED"},
+        "delete": {"TYPHOID_SUSPECTED"},
+        "add": {"WIDAL_TEST_PENDING"},
+        "cost": 1,
+        "duration": "6 hours",
+    },
+    {
+        "name": "ReceiveWidalResult",
+        "precond": {"WIDAL_TEST_PENDING"},
+        "delete": {"WIDAL_TEST_PENDING"},
+        "add": {"TYPHOID_CONFIRMED"},
+        "cost": 1,
+        "duration": "6 hours",
+    },
+    {
+        "name": "ClinicalDiagnosisCold",
+        "precond": {"PATIENT_PRESENT", "COLD_SUSPECTED"},
+        "delete": {"COLD_SUSPECTED"},
+        "add": {"COLD_CONFIRMED"},
+        "cost": 1,
+        "duration": "15 minutes",
+    },
+    {
+        "name": "ClinicalDiagnosisMigraine",
+        "precond": {"PATIENT_PRESENT", "MIGRAINE_SUSPECTED"},
+        "delete": {"MIGRAINE_SUSPECTED"},
+        "add": {"MIGRAINE_CONFIRMED"},
+        "cost": 1,
+        "duration": "15 minutes",
+    },
+    {
+        "name": "ClinicalDiagnosisChickenpox",
+        "precond": {"PATIENT_PRESENT", "CHICKENPOX_SUSPECTED"},
+        "delete": {"CHICKENPOX_SUSPECTED"},
+        "add": {"CHICKENPOX_CONFIRMED"},
+        "cost": 1,
+        "duration": "15 minutes",
+    },
+    # --- Treatment: each keyed to ONE disease's confirmed fact --------------
+    {
+        "name": "PrescribeAntiviral",
+        "precond": {"PATIENT_ISOLATED", "COVID_CONFIRMED"},
+        "delete": set(),
+        "add": {"TREATMENT_STARTED"},
+        "cost": 1,
+        "duration": "10 minutes",
+    },
+    {
+        "name": "PrescribeOseltamivir",
+        "precond": {"PATIENT_ISOLATED", "FLU_CONFIRMED"},
+        "delete": set(),
+        "add": {"TREATMENT_STARTED"},
+        "cost": 1,
+        "duration": "10 minutes",
+    },
+    {
+        "name": "PrescribeIVFluidsAndMonitoring",
+        "precond": {"DENGUE_CONFIRMED"},
+        "delete": set(),
+        "add": {"TREATMENT_STARTED"},
+        "cost": 1,
+        "duration": "1 hour",
+    },
+    {
+        "name": "PrescribeAntimalarials",
+        "precond": {"MALARIA_CONFIRMED"},
+        "delete": set(),
+        "add": {"TREATMENT_STARTED"},
+        "cost": 1,
+        "duration": "10 minutes",
+    },
+    {
+        "name": "PrescribeAntibiotics",
+        "precond": {"TYPHOID_CONFIRMED"},
+        "delete": set(),
+        "add": {"TREATMENT_STARTED"},
+        "cost": 1,
+        "duration": "10 minutes",
+    },
+    {
+        "name": "PrescribeDecongestants",
+        "precond": {"COLD_CONFIRMED"},
+        "delete": set(),
+        "add": {"TREATMENT_STARTED"},
+        "cost": 1,
+        "duration": "10 minutes",
+    },
+    {
+        "name": "PrescribeAnalgesics",
+        "precond": {"MIGRAINE_CONFIRMED"},
+        "delete": set(),
+        "add": {"TREATMENT_STARTED"},
+        "cost": 1,
+        "duration": "10 minutes",
+    },
+    {
+        "name": "PrescribeAntihistamines",
+        "precond": {"PATIENT_ISOLATED", "CHICKENPOX_CONFIRMED"},
+        "delete": set(),
+        "add": {"TREATMENT_STARTED"},
+        "cost": 1,
+        "duration": "10 minutes",
+    },
+    # --- Closing the loop (every plan ends the same way) -------------------
+    {
+        "name": "MonitorVitals",
+        "precond": {"TREATMENT_STARTED"},
+        "delete": set(),
+        "add": {"VITALS_MONITORED"},
+        "cost": 1,
+        "duration": "Continuous",
+    },
+    {
+        "name": "ScheduleFollowUp",
+        "precond": {"VITALS_MONITORED"},
+        "delete": set(),
+        "add": {"FOLLOWUP_SCHEDULED"},
+        "cost": 1,
+        "duration": "5 minutes",
+    },
+]
+
+GOAL_STATE: Set[str] = {"TREATMENT_STARTED", "VITALS_MONITORED", "FOLLOWUP_SCHEDULED"}
+
+
+DIAGNOSIS_INITIAL_STATES: Dict[str, Set[str]] = {
+    "covid19": {"PATIENT_PRESENT", "COVID_SUSPECTED", "CONTAGIOUS_DISEASE"},
+    "flu": {"PATIENT_PRESENT", "FLU_SUSPECTED", "CONTAGIOUS_DISEASE"},
+    "dengue": {"PATIENT_PRESENT", "DENGUE_SUSPECTED"},
+    "malaria": {"PATIENT_PRESENT", "MALARIA_SUSPECTED"},
+    "typhoid": {"PATIENT_PRESENT", "TYPHOID_SUSPECTED"},
+    "common_cold": {"PATIENT_PRESENT", "COLD_SUSPECTED"},
+    "chickenpox": {"PATIENT_PRESENT", "CHICKENPOX_SUSPECTED", "CONTAGIOUS_DISEASE"},
+    "migraine": {"PATIENT_PRESENT", "MIGRAINE_SUSPECTED"},
+}
+
+
+@dataclass
+class TreatmentPlanner:
+    """STRIPS-style treatment planner that searches for a plan with BFS."""
+
+    actions: List[Dict] = field(default_factory=lambda: ACTIONS)
+    goal_state: Set[str] = field(default_factory=lambda: set(GOAL_STATE))
+    max_depth: int = 20
+
+   
+   
+    def _apply_action(self, state: FrozenSet[str], action: Dict) -> Optional[FrozenSet[str]]:
+        """Return the resulting state if `action` is applicable in
+        `state`, otherwise None (preconditions not satisfied)."""
+        if not action["precond"].issubset(state):
+            return None  # cannot apply this action
+        new_state = (set(state) - action["delete"]) | action["add"]
+        return frozenset(new_state)
+
+   
+   
+    def generate_plan(
+        self,
+        initial_state: Set[str],
+        goal_state: Optional[Set[str]] = None,
+    ) -> Optional[List[Dict]]:
+        """Breadth-first search for the shortest sequence of actions
+        that transforms `initial_state` into a state containing every
+        fact in `goal_state`. Returns a list of action dicts, or None
+        if no plan is found within max_depth.
+        """
+        goal = set(goal_state) if goal_state is not None else self.goal_state
+        start = frozenset(initial_state)
+
+        if goal.issubset(start):
+            return []  # already at the goal, nothing to do
+
+        visited = {start}
+        queue = deque([(start, [])])  # (current_state, plan_so_far)
+
+        while queue:
+            state, plan = queue.popleft()
+
+            if len(plan) >= self.max_depth:
+                continue  # don't search deeper than max_depth
+
+            for action in self.actions:
+                new_state = self._apply_action(state, action)
+                if new_state is None or new_state in visited:
+                    continue  # inapplicable, or a state we've already seen
+
+                new_plan = plan + [action]
+
+                if goal.issubset(new_state):
+                    return new_plan  # found a valid plan!
+
+                visited.add(new_state)
+                queue.append((new_state, new_plan))
+
+        return None  # no plan found within max_depth
+
+   
+    def create_treatment_plan(self, diagnosis: str, severity: str = "MODERATE") -> Dict:
+        """Look up the initial-state predicates for `diagnosis`, add a
+        severity fact, and run the BFS planner to build a full
+        treatment plan.
+        """
+        diagnosis_key = diagnosis.lower()
+        if diagnosis_key not in DIAGNOSIS_INITIAL_STATES:
+            return {
+                "diagnosis": diagnosis,
+                "severity": severity,
+                "success": False,
+                "error": f"No known initial state for diagnosis '{diagnosis}'. "
+                         f"Known diagnoses: {sorted(DIAGNOSIS_INITIAL_STATES)}",
+                "plan": [],
+                "steps": 0,
+            }
+
+        initial_state = set(DIAGNOSIS_INITIAL_STATES[diagnosis_key])
+        initial_state.add(f"{severity.upper()}_SEVERITY")
+
+        raw_plan = self.generate_plan(initial_state, self.goal_state)
+
+        if raw_plan is None:
+            return {
+                "diagnosis": diagnosis,
+                "severity": severity,
+                "initial_state": sorted(initial_state),
+                "goal_state": sorted(self.goal_state),
+                "success": False,
+                "error": "BFS could not find a plan within max_depth "
+                         f"({self.max_depth}). Check that the goal is "
+                         "reachable through the available actions.",
+                "plan": [],
+                "steps": 0,
+            }
+
+        formatted_plan = [
+            {
+                "step": i + 1,
+                "action": action["name"],
+                "duration": action["duration"],
+                "cost": action["cost"],
+                "precond": sorted(action["precond"]),
+                "add": sorted(action["add"]),
+                "delete": sorted(action["delete"]),
+            }
+            for i, action in enumerate(raw_plan)
+        ]
+
+        return {
+            "diagnosis": diagnosis,
+            "severity": severity,
+            "initial_state": sorted(initial_state),
+            "goal_state": sorted(self.goal_state),
+            "success": True,
+            "plan": formatted_plan,
+            "steps": len(formatted_plan),
+            "total_cost": sum(step["cost"] for step in formatted_plan),
+        }
+
+   
+    def print_plan(self, plan: Dict) -> None:
+        print(f"Diagnosis : {plan['diagnosis']} ({plan.get('severity', 'N/A')})")
+        if not plan.get("success", False):
+            print(f"No plan found: {plan.get('error')}")
+            return
+        print(f"Plan Steps: {plan['steps']}")
+        print()
+        for step in plan["plan"]:
+            print(f"  Step {step['step']:2d}: {step['action']:<30} [{step['duration']}]")
+
+
+
+if __name__ == "__main__":
+    planner = TreatmentPlanner()
+
+    # Test for COVID-19 case
+    plan = planner.create_treatment_plan("covid19", "HIGH")
+    print(f"Diagnosis : {plan['diagnosis']}")
+    print(f"Plan Steps: {plan['steps']}")
+    print()
+    for step in plan["plan"]:
+        print(f"  Step {step['step']:2d}: {step['action']:<30} [{step['duration']}]")
+
+    print("\n" + "=" * 55)
+    print("Other diagnoses:")
+    print("=" * 55)
+    for disease in ["flu", "dengue", "malaria", "typhoid", "common_cold", "chickenpox", "migraine"]:
+        p = planner.create_treatment_plan(disease, "MODERATE")
+        print(f"\n{disease} -> {p['steps']} steps: "
+              f"{[s['action'] for s in p['plan']]}")
