@@ -181,24 +181,26 @@ class TreatmentPlanner:
         plan = self.generate_plan(initial_state, goal_state)
 
         if plan is None:
-            return {'error': 'No plan found', 'plan': []}
+            return {'error': 'No plan found', 'plan': [], 'steps': 0}
+
+        plan_steps = [
+            {
+                'step':     i+1,
+                'action':   a['name'],
+                'duration': a['duration'],
+                'cost':     a['cost']
+            }
+            for i, a in enumerate(plan)
+        ]
 
         return {
             'diagnosis':     diagnosis,
             'urgency':       urgency,
             'initial_state': sorted(initial_state),
             'goal_state':    sorted(goal_state),
-            'steps':         len(plan),
+            'steps':         len(plan_steps),
             'total_duration': self._estimate_duration(plan),
-            'plan': [
-                {
-                    'step':     i+1,
-                    'action':   a['name'],
-                    'duration': a['duration'],
-                    'cost':     a['cost']
-                }
-                for i, a in enumerate(plan)
-            ]
+            'plan':          plan_steps
         }
 
     def _estimate_duration(self, plan: List[Dict]) -> str:
@@ -206,10 +208,22 @@ class TreatmentPlanner:
         return f"{len(plan)} actions | see individual durations"
 
     def analyze(self, percept) -> Dict:
-        """Module interface — generates a sample plan"""
-        # This is called post-diagnosis; use KB result
-        result = self.create_treatment_plan('flu', 'MEDIUM')
-        result['summary']    = f"Plan: {result['steps']} steps generated"
-        result['diagnosis']  = 'flu'
-        result['confidence'] = 0.7
+        """Module interface — generates a treatment plan from patient percept"""
+        dx = getattr(percept, 'diagnosis', 'flu')
+        urgency = getattr(percept, 'urgency', 'MEDIUM')
+
+        result = self.create_treatment_plan(dx, urgency)
+        
+        num_steps = result.get('steps', len(result.get('plan', [])))
+        
+        result['module']     = 'Treatment Planner'
+        result['summary']    = f"Plan: {num_steps} steps generated"
+        result['diagnosis']  = dx
+        result['confidence'] = 1.0
         return result
+
+
+if __name__ == "__main__":
+    planner = TreatmentPlanner()
+    test_plan = planner.create_treatment_plan("covid19", "HIGH")
+    print("Generated Plan:", test_plan)
