@@ -3,6 +3,8 @@
 # Covers: Week 10 (Neural Networks)
 # ============================================================
 
+from typing import Dict, List
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import layers, models, callbacks
