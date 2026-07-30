@@ -1,0 +1,9 @@
+disease_id,disease_name,severity,category
+D001,Common Cold,LOW,Respiratory
+D002,Influenza,MEDIUM,Respiratory
+D003,COVID-19,HIGH,Respiratory
+D004,Pneumonia,HIGH,Respiratory
+D005,Malaria,HIGH,Parasitic
+D006,Typhoid Fever,HIGH,Bacterial
+D007,Migraine,LOW,Neurological
+D008,Food Poisoning,MEDIUM,Gastrointestinal

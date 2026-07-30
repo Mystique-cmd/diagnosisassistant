@@ -1,0 +1,9 @@
+patient_id,age,gender,temperature,heart_rate,systolic_bp,diastolic_bp,fever,high_temperature,cough,persistent_cough,runny_nose,sore_throat,loss_of_smell,loss_of_taste,shortness_of_breath,chest_pain,fatigue,weakness,muscle_aches,joint_pain,headache,dizziness,confusion,chills,sweating,rash,nausea,vomiting,diarrhea,abdominal_pain,loss_of_appetite,dehydration,rapid_heartbeat,low_blood_pressure,high_blood_pressure,night_sweats,weight_loss,blurred_vision,ear_pain,eye_redness,swollen_lymph_nodes,dry_mouth,back_pain,difficulty_swallowing,wheezing,coughing_blood,diagnosis,severity
+P0001,23,Female,36.8,72,118,78,0,0,1,0,1,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,Common Cold,LOW
+P0002,35,Male,39.1,104,122,80,1,1,1,0,0,0,1,1,1,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,COVID-19,HIGH
+P0003,48,Female,38.9,98,120,76,1,1,1,0,0,0,0,0,0,0,1,0,1,1,1,0,0,1,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,Influenza,MEDIUM
+P0004,61,Male,39.6,116,130,84,1,1,1,1,0,0,0,0,1,1,1,1,0,0,1,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,1,1,Pneumonia,HIGH
+P0005,29,Female,39.8,112,110,70,1,1,0,0,0,0,0,0,0,0,1,1,0,1,1,1,0,1,1,0,1,0,0,0,1,0,1,1,0,1,0,0,0,0,0,1,0,0,0,0,Malaria,HIGH
+P0006,40,Male,39.4,102,108,72,1,1,0,0,0,0,0,0,0,0,1,1,0,0,1,0,0,0,0,0,1,0,1,1,1,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,Typhoid Fever,HIGH
+P0007,31,Female,36.9,74,116,76,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,Migraine,LOW
+P0008,27,Male,38.0,95,118,78,1,1,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,Food Poisoning,MEDIUM
