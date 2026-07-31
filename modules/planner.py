@@ -238,17 +238,9 @@ class TreatmentPlanner:
             'urgency':       urgency,
             'initial_state': sorted(initial_state),
             'goal_state':    sorted(goal_state),
-            'steps':         len(plan),
+            'steps':         len(plan_steps),
             'total_duration': self._estimate_duration(plan),
-            'plan': [
-                {
-                    'step':     i+1,
-                    'action':   a['name'],
-                    'duration': a['duration'],
-                    'cost':     a['cost']
-                }
-                for i, a in enumerate(plan)
-            ]
+            'plan':          plan_steps
         }
 
     def _estimate_duration(self, plan: List[Dict]) -> str:
