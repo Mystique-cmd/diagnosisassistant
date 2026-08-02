@@ -1,0 +1,19 @@
+symptom_id,symptom_name,description,body_system,synonyms
+S001,fever,Elevated body temperature,general,high temperature;temperature;feverish;running a temperature;hot;pyrexia;burning up
+S002,cough,Repeated expulsion of air from the lungs,respiratory,coughing;dry cough;wet cough;hacking cough;coughing fit
+S003,fatigue,Persistent tiredness or lack of energy,general,tired;tiredness;exhausted;exhaustion;low energy;no energy;weak;weakness;worn out;drained
+S004,headache,Pain in the head or upper neck,neurological,head pain;head hurts;pounding head;head is pounding;migraine
+S005,body_aches,Generalized muscle pain,musculoskeletal,body ache;muscle aches;muscle pain;aching muscles;sore muscles;myalgia;everything hurts
+S006,loss_of_smell,Reduced or absent sense of smell,ent,can't smell;cannot smell;no sense of smell;anosmia;lost my smell;smell loss;can't taste anything
+S007,chest_pain,Pain or discomfort in the chest,cardiovascular,chest hurts;chest tightness;tightness in chest;pain in my chest;chest discomfort
+S008,rash,Abnormal change in skin appearance,dermatological,skin rash;red spots;skin breakout;hives;red bumps;itchy skin patches
+S009,joint_pain,Pain in one or more joints,musculoskeletal,joints hurt;achy joints;arthralgia;painful joints;joint stiffness
+S010,shortness_of_breath,Difficulty breathing normally,respiratory,can't breathe;cannot breathe;breathless;difficulty breathing;out of breath;winded;dyspnea;gasping for air
+S011,sweating,Excessive perspiration,general,sweaty;perspiring;clammy;sweating a lot
+S012,frequent_urination,Urinating more often than usual,urinary,peeing a lot;urinating frequently;going to the bathroom a lot;frequent bathroom trips;polyuria
+S013,excessive_thirst,Unusually strong or persistent thirst,endocrine,very thirsty;extremely thirsty;can't stop drinking water;extreme thirst;polydipsia;always thirsty;thirsty all the time
+S014,blurred_vision,Loss of visual sharpness,ophthalmological,blurry vision;can't see clearly;vision problems;fuzzy vision;vision is blurry;vision has been blurry;vision is fuzzy
+S015,night_sweats,Excessive sweating during sleep,general,sweating at night;waking up sweaty;drenched in sweat at night;soaked the sheets
+S016,weight_loss,Unintentional decrease in body weight,general,losing weight;lost weight;unexplained weight loss;shedding pounds;dropping weight
+S017,stiff_neck,Reduced range of motion / pain in the neck,musculoskeletal,neck stiffness;can't move my neck;neck pain;rigid neck;neck is stiff
+S018,light_sensitivity,Discomfort in bright light,neurological,sensitive to light;photophobia;light hurts my eyes;bright light bothers me;eyes hurt in light
