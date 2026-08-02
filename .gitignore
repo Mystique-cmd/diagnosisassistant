@@ -1,5 +1,7 @@
-<<<<<<< HEAD
+__pycache__/
+*.py[cod]
+.venv/
 venv/
-=======
-venv
->>>>>>> main
+.vscode/
+.idea/
+.env
