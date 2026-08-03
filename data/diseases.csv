@@ -1,9 +1,0 @@
-disease_id,disease_name,category,contagious,key_symptoms
-D001,flu,viral,False,fever:0.90;cough:0.85;fatigue:0.88;headache:0.70;body_aches:0.80;loss_of_smell:0.20
-D002,covid19,viral,True,fever:0.88;cough:0.80;fatigue:0.90;loss_of_smell:0.85;headache:0.65;body_aches:0.60
-D003,dengue,viral,False,fever:0.98;rash:0.75;joint_pain:0.85;headache:0.90;fatigue:0.80;body_aches:0.88
-D004,cardiac_event,cardiac,False,chest_pain:0.92;shortness_of_breath:0.88;fatigue:0.70;sweating:0.75;headache:0.30
-D005,diabetes,metabolic,False,fatigue:0.82;frequent_urination:0.95;excessive_thirst:0.92;blurred_vision:0.70;weight_loss:0.50
-D006,common_cold,viral,False,cough:0.90;fever:0.50;headache:0.60;fatigue:0.55;body_aches:0.50
-D007,tuberculosis,bacterial,True,cough:0.95;weight_loss:0.85;night_sweats:0.80;fatigue:0.88;fever:0.70
-D008,meningitis,bacterial,False,headache:0.95;stiff_neck:0.90;fever:0.92;light_sensitivity:0.85;fatigue:0.80
