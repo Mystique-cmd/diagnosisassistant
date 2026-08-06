@@ -32,7 +32,6 @@ class TreatmentPlanner:
                 'cost': 0, 'duration': '15 minutes'
             },
             {
-               
                 'name': 'AdministerCardiacCare',
                 'precond': {'PATIENT_IN_ICU', 'CARDIAC_CONDITION'},
                 'delete':  {'CARDIAC_CONDITION'},
@@ -40,7 +39,6 @@ class TreatmentPlanner:
                 'cost': 1, 'duration': '20 minutes'
             },
             {
-               
                 'name': 'IsolatePatient',
                 'precond': {'CONTAGIOUS_DISEASE', 'PATIENT_PRESENT'},
                 'delete':  {'CONTAGIOUS_DISEASE'},
@@ -57,7 +55,6 @@ class TreatmentPlanner:
             },
             {
                 'name': 'ReceiveBloodResults',
-                
                 'precond': {'BLOOD_RESULTS_PENDING'},
                 'delete':  {'BLOOD_RESULTS_PENDING'},
                 'add':     {'BLOOD_RESULTS_AVAILABLE', 'DIAGNOSIS_REFINED',
@@ -80,7 +77,6 @@ class TreatmentPlanner:
             },
             # Treatment
             {
-                
                 'name': 'PrescribeAntiviral',
                 'precond': {'DIAGNOSIS_CONFIRMED', 'VIRAL_INFECTION',
                             'PATIENT_ISOLATED'},
@@ -89,7 +85,6 @@ class TreatmentPlanner:
                 'cost': 1, 'duration': '10 minutes'
             },
             {
-               
                 'name': 'PrescribeAntiviralOutpatient',
                 'precond': {'DIAGNOSIS_CONFIRMED', 'VIRAL_INFECTION',
                             'NON_CONTAGIOUS_CASE'},
@@ -98,7 +93,6 @@ class TreatmentPlanner:
                 'cost': 1, 'duration': '10 minutes'
             },
             {
-                
                 'name': 'PrescribeAntibiotics',
                 'precond': {'DIAGNOSIS_CONFIRMED', 'BACTERIAL_INFECTION',
                             'PATIENT_ISOLATED'},
@@ -107,7 +101,6 @@ class TreatmentPlanner:
                 'cost': 1, 'duration': '10 minutes'
             },
             {
-              
                 'name': 'PrescribeAntibioticsOutpatient',
                 'precond': {'DIAGNOSIS_CONFIRMED', 'BACTERIAL_INFECTION',
                             'NON_CONTAGIOUS_CASE'},
@@ -116,7 +109,6 @@ class TreatmentPlanner:
                 'cost': 1, 'duration': '10 minutes'
             },
             {
-                
                 'name': 'PrescribeInsulinTherapy',
                 'precond': {'DIAGNOSIS_CONFIRMED', 'METABOLIC_CONDITION'},
                 'delete':  {'METABOLIC_CONDITION'},
@@ -186,7 +178,6 @@ class TreatmentPlanner:
                               urgency: str) -> Dict:
         """Generate a treatment plan for a given diagnosis"""
 
-       
         diagnosis_states = {
             'flu':           {'VIRAL_INFECTION', 'DIAGNOSIS_NEEDED',
                               'NON_CONTAGIOUS_CASE'},
@@ -222,25 +213,33 @@ class TreatmentPlanner:
         plan = self.generate_plan(initial_state, goal_state)
 
         if plan is None:
-            
             return {
-                'diagnosis': diagnosis,
-                'urgency': urgency,
-                'initial_state': sorted(initial_state),
-                'goal_state': sorted(goal_state),
-                'error': 'No plan found',
-                'steps': 0,
-                'plan': []
+                'diagnosis':         diagnosis,
+                'urgency':           urgency,
+                'initial_state':     sorted(initial_state),
+                'goal_state':        sorted(goal_state),
+                'error':             'No plan found',
+                'steps':             0,
+                'plan':              []
             }
 
+        plan_steps = [
+            {
+                'step':     i + 1,
+                'action':   action['name'],
+                'duration': action['duration'],
+            }
+            for i, action in enumerate(plan)
+        ]
+
         return {
-            'diagnosis':     diagnosis,
-            'urgency':       urgency,
-            'initial_state': sorted(initial_state),
-            'goal_state':    sorted(goal_state),
-            'steps':         len(plan_steps),
+            'diagnosis':      diagnosis,
+            'urgency':        urgency,
+            'initial_state':  sorted(initial_state),
+            'goal_state':     sorted(goal_state),
+            'steps':          len(plan_steps),
             'total_duration': self._estimate_duration(plan),
-            'plan':          plan_steps
+            'plan':           plan_steps
         }
 
     def _estimate_duration(self, plan: List[Dict]) -> str:
@@ -249,7 +248,7 @@ class TreatmentPlanner:
 
     def analyze(self, percept) -> Dict:
         """Module interface — generates a plan from the percept"""
-       
+
         diagnosis = getattr(percept, 'diagnosis', 'flu')
         urgency   = getattr(percept, 'urgency', 'MEDIUM')
 
@@ -258,7 +257,6 @@ class TreatmentPlanner:
         result['diagnosis']  = diagnosis
         result['confidence'] = getattr(percept, 'confidence', 0.7)
         return result
-
 
 
 # Manual test
