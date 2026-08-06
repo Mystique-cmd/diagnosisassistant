@@ -138,3 +138,21 @@ class FuzzySeverityAssessor:
         result['diagnosis'] = result['severity_label']
         result['confidence']= result['severity_score'] / 100
         return result
+
+if __name__ == "__main__":
+    fa = FuzzySeverityAssessor()
+
+    print("Running Module 6: Fuzzy Logic Tests...\n")
+
+    # These are the exact test cases required by the Capstone manual
+    test_cases = [
+        (37.0, 72, 2, "Normal patient"),
+        (38.5, 95, 4, "Mild illness"),
+        (39.8, 115, 7, "Severe case"),
+        (40.2, 130, 9, "Critical case"),
+    ]
+
+    for temp, hr, count, desc in test_cases:
+        result = fa.assess(temp, hr, count)
+        # Formatting exactly as the lab manual dictates
+        print(f"{desc:15}: Score={result['severity_score']:>4}, Label={result['severity_label']}")
