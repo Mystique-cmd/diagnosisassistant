@@ -14,17 +14,17 @@ class SimpleBayesianDiagnostics:
 
     def __init__(self):
         # Prior probabilities P(Disease)
-     self.priors = {
-    'flu':           0.13,
-    'covid19':       0.08,
-    'dengue':        0.05,
-    'cardiac':       0.04,
-    'diabetes':      0.09,
-    'common_cold':   0.24,
-    'malaria':       0.08,
-    'pneumonia':     0.07,
-    'healthy':       0.22,
-}
+        self.priors = {
+            'flu':         0.13,
+            'covid19':     0.08,
+            'dengue':      0.05,
+            'cardiac':     0.04,
+            'diabetes':    0.09,
+            'common_cold': 0.24,
+            'malaria':     0.08,
+            'pneumonia':   0.07,
+            'healthy':     0.22,
+        }
 
         # Likelihoods: P(Symptom | Disease)
         # Format: disease -> {symptom -> P(symptom|disease)}
@@ -64,28 +64,28 @@ class SimpleBayesianDiagnostics:
                 'fatigue': 0.55, 'body_aches': 0.50,
                 'loss_of_smell': 0.30, 'rash': 0.02,
                 'chest_pain': 0.05, 'joint_pain': 0.15,
-                'malaria': {
-    'fever': 0.96,
-    'headache': 0.82,
-    'fatigue': 0.90,
-    'body_aches': 0.80,
-    'sweating': 0.88,
-    'joint_pain': 0.65,
-    'cough': 0.20,
-    'rash': 0.05,
-    'loss_of_smell': 0.02,
-},
-
-'pneumonia': {
-    'fever': 0.92,
-    'cough': 0.94,
-    'chest_pain': 0.75,
-    'shortness_of_breath': 0.85,
-    'fatigue': 0.78,
-    'headache': 0.30,
-    'body_aches': 0.40,
-    'rash': 0.02,
-    'joint_pain': 0.08,
+            },
+            'malaria': {
+                'fever': 0.96,
+                'headache': 0.82,
+                'fatigue': 0.90,
+                'body_aches': 0.80,
+                'sweating': 0.88,
+                'joint_pain': 0.65,
+                'cough': 0.20,
+                'rash': 0.05,
+                'loss_of_smell': 0.02,
+            },
+            'pneumonia': {
+                'fever': 0.92,
+                'cough': 0.94,
+                'chest_pain': 0.75,
+                'shortness_of_breath': 0.85,
+                'fatigue': 0.78,
+                'headache': 0.30,
+                'body_aches': 0.40,
+                'rash': 0.02,
+                'joint_pain': 0.08,
             },
             'healthy': {
                 'fever': 0.02, 'cough': 0.05, 'fatigue': 0.10,
@@ -126,42 +126,42 @@ class SimpleBayesianDiagnostics:
         sorted_dx   = sorted(posteriors.items(),
                              key=lambda x: x[1], reverse=True)
 
-       top_three = sorted_dx[:3]
+        top_three = sorted_dx[:3]
 
-return {
-    'summary': f"Most likely diagnosis: {top_disease} ({top_prob:.2%})",
-    'diagnosis': top_disease,
-    'confidence': top_prob,
-    'top_three': top_three,
-    'all_posteriors': posteriors,
-    'ranked_diagnoses': sorted_dx
-}
+        return {
+            'summary': f"Most likely diagnosis: {top_disease} ({top_prob:.2%})",
+            'diagnosis': top_disease,
+            'confidence': top_prob,
+            'top_three': top_three,
+            'all_posteriors': posteriors,
+            'ranked_diagnoses': sorted_dx
+        }
 
-   def explain(self, disease: str, symptoms: List[str]) -> str:
-    symptoms_clean = [s.lower().replace(' ', '_') for s in symptoms]
-    likelihoods = self.likelihoods.get(disease, {})
+    def explain(self, disease: str, symptoms: List[str]) -> str:
+        symptoms_clean = [s.lower().replace(' ', '_') for s in symptoms]
+        likelihoods = self.likelihoods.get(disease, {})
 
-    output = []
-    output.append("=" * 40)
-    output.append(f"Diagnosis: {disease.upper()}")
-    output.append("=" * 40)
-    output.append(f"Prior Probability: {self.priors.get(disease, 0):.2f}")
-    output.append("")
-    output.append("Evidence:")
+        output = []
+        output.append("=" * 40)
+        output.append(f"Diagnosis: {disease.upper()}")
+        output.append("=" * 40)
+        output.append(f"Prior Probability: {self.priors.get(disease, 0):.2f}")
+        output.append("")
+        output.append("Evidence:")
 
-    for symptom in symptoms_clean:
-        probability = likelihoods.get(symptom, 0.01)
+        for symptom in symptoms_clean:
+            probability = likelihoods.get(symptom, 0.01)
+            output.append(
+                f"✓ {symptom.replace('_', ' ').title()} : {probability:.2f}"
+            )
+
+        output.append("")
         output.append(
-            f"✓ {symptom.replace('_', ' ').title()} : {probability:.2f}"
+            "The diagnosis was calculated using Bayesian probability "
+            "based on the patient's symptoms."
         )
 
-    output.append("")
-    output.append(
-        "The diagnosis was calculated using Bayesian probability "
-        "based on the patient's symptoms."
-    )
-
-    return "\n".join(output)
+        return "\n".join(output)
 
 
 if __name__ == "__main__":
