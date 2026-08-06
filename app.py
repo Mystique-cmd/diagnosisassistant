@@ -84,20 +84,51 @@ def setup_system() -> HealthcareDiagnosticAgent:
     return agent
 
 
+def _get_input(prompt: str, default: str = ""):
+    """Prompt user for input, returning default if empty."""
+    value = input(prompt)
+    return value.strip() if value.strip() else default
+
+
+def collect_patient_input(patient_count: int) -> PatientPercept:
+    """Collect diagnosis (symptoms and vitals) interactively from the user."""
+    print("=" * 55)
+    print(f"  PATIENT INTAKE FORM - Patient {patient_count}")
+    print("=" * 55)
+
+    patient_id = _get_input("Patient ID [P001]: ", f"P{patient_count:03d}")
+
+    symptoms_raw = _get_input(
+        "Symptoms (comma-separated) [fever, cough]: ",
+        "fever, cough"
+    )
+    symptoms = [s.strip().lower().replace(' ', '_')
+                for s in symptoms_raw.split(',') if s.strip()]
+
+    age = int(_get_input("Age [30]: ", "30"))
+    temperature = float(_get_input("Temperature (C) [37.0]: ", "37.0"))
+    heart_rate = int(_get_input("Heart rate (bpm) [80]: ", "80"))
+    blood_pressure = _get_input("Blood pressure [120/80]: ", "120/80")
+
+    return PatientPercept(
+        patient_id=patient_id,
+        symptoms=symptoms,
+        age=age,
+        temperature=temperature,
+        heart_rate=heart_rate,
+        blood_pressure=blood_pressure
+    )
+
+
 def main():
     agent = setup_system()
 
-    # 5 test cases covering multiple diagnoses as required by Final Deliverables
-    test_patients = [
-        PatientPercept("P001", ["fever", "cough", "loss_of_smell", "fatigue"], 34, 38.9, 98, "120/80"),
-        PatientPercept("P002", ["fever", "rash", "joint_pain", "headache"], 28, 39.5, 110, "130/85"),
-        PatientPercept("P003", ["cough", "runny_nose", "sore_throat"], 45, 37.2, 75, "118/75"),
-        PatientPercept("P004", ["chest_pain", "shortness_of_breath"], 62, 37.8, 115, "140/90"),
-        PatientPercept("P005", ["fever", "cough", "fatigue"], 50, 38.5, 92, "122/80")
-    ]
+    patient_count = 0
+    while True:
+        patient_count += 1
+        patient = collect_patient_input(patient_count)
 
-    for patient in test_patients:
-        print(f"\n[Patient Intake] Processing {patient.patient_id}...")
+        print(f"[Patient Intake] Processing {patient.patient_id}...")
 
         # Perceive -> Think -> Act Cycle
         agent.perceive(patient)
@@ -113,7 +144,7 @@ def main():
             report = agent.act()
 
         # Print Final Diagnostic Report
-        print("\n" + "="*15 + f" DIAGNOSTIC REPORT: {patient.patient_id} " + "="*15)
+        print("=" * 15 + f" DIAGNOSTIC REPORT: {patient.patient_id} " + "=" * 15)
         if isinstance(report, dict):
             print(f"Primary Diagnosis: {report.get('final_diagnosis', report.get('diagnosis', 'Unknown'))}")
             print(f"Confidence Score:  {report.get('confidence_score', report.get('confidence', 0.0)):.2%}")
@@ -121,7 +152,7 @@ def main():
 
             plan_items = report.get('treatment_plan', report.get('plan', []))
             if plan_items:
-                print("\nTreatment Plan Steps:")
+                print("Treatment Plan Steps:")
                 for step in plan_items:
                     if isinstance(step, dict):
                         print(f"  Step {step.get('step', '-')}: {step.get('action', step)} [{step.get('duration', 'N/A')}]")
@@ -130,6 +161,15 @@ def main():
         else:
             print(report)
         print("=" * 55)
+
+        # Ask user whether to continue with another patient
+        continue_input = _get_input(
+            "Process another patient? (y/n) [y]: ",
+            "y"
+        ).lower()
+        if continue_input not in ('y', 'yes'):
+            print("Exiting. Thank you for using the Healthcare Diagnostic Assistant.")
+            break
 
 
 if __name__ == "__main__":
