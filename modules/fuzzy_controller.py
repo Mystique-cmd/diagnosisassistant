@@ -127,7 +127,7 @@ class FuzzySeverityAssessor:
         return "LOW"
 
     def analyze(self, percept: Union[Dict, Any]) -> Dict:
-        """Module interface for the agent (safely handles both dict and PatientPercept objects)"""
+        """Module interface for the agent (safely handles dict and PatientPercept objects)"""
         if isinstance(percept, dict):
             temp = float(percept.get('temperature', percept.get('temp', 37.0)))
             hr = int(percept.get('heart_rate', percept.get('hr', 70)))
@@ -139,11 +139,7 @@ class FuzzySeverityAssessor:
             symptoms = getattr(percept, 'symptoms', [])
             symptom_count = len(symptoms) if isinstance(symptoms, list) else 0
 
-        result = self.assess(
-            temp,
-            hr,
-            symptom_count
-        )
+        result = self.assess(temp, hr, symptom_count)
         result['summary']   = (f"Severity: {result['severity_label']} "
                                f"({result['severity_score']:.1f}/100)")
         result['diagnosis'] = result['severity_label']
