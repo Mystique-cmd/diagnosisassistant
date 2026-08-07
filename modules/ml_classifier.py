@@ -1,84 +1,56 @@
-from typing import Dict, List
+# ============================================================
+# MODULE 7: Machine Learning — Symptom Classifier
+# Covers: Week 13 (Machine Learning in AI)
+# ============================================================
 
+from typing import Dict, List, Any, Union
 import numpy as np
-import pandas as pd
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import confusion_matrix
-import matplotlib
-
-matplotlib.use("Agg")  # headless-safe backend
-import matplotlib.pyplot as plt
-import seaborn as sns
-import warnings
-
-warnings.filterwarnings('ignore')
-
+from sklearn.ensemble import RandomForestClassifier
 
 class MLDiagnosticClassifier:
     """
-    Ensemble ML-based diagnostic classifier.
-    Uses Decision Trees, Random Forest, and
-    Gradient Boosting for robust diagnosis.
+    ML-based medical diagnostic classifier using Random Forest.
+    Inputs: Binary symptom vector
+    Output: Top predicted diagnoses with confidence scores
     """
 
-    SYMPTOM_FEATURES = [
-        'fever', 'cough', 'fatigue', 'headache',
-        'body_aches', 'loss_of_smell', 'chest_pain',
-        'rash', 'joint_pain', 'shortness_of_breath',
-        'sweating', 'frequent_urination', 'excessive_thirst',
-        'blurred_vision', 'night_sweats', 'weight_loss',
-        'stiff_neck', 'light_sensitivity'
+    SYMPTOMS = [
+        'fever', 'cough', 'fatigue', 'shortness_of_breath', 'sore_throat',
+        'headache', 'body_aches', 'loss_of_taste', 'loss_of_smell', 'runny_nose',
+        'sneezing', 'chest_pain', 'nausea', 'diarrhea', 'rash',
+        'joint_pain', 'chills', 'sweating'
     ]
 
-    DISEASE_LABELS = [
-        'flu', 'covid19', 'dengue', 'cardiac_event',
-        'diabetes', 'common_cold', 'tuberculosis', 'meningitis'
+    DISEASES = [
+        'covid19', 'common_cold', 'flu', 'tuberculosis',
+        'cardiac_event', 'gastroenteritis', 'pneumonia'
     ]
 
     def __init__(self):
-        self.models = {
-            'Decision Tree':     DecisionTreeClassifier(
-                max_depth=8, criterion='entropy', random_state=42),
-            'Random Forest':     RandomForestClassifier(
-                n_estimators=100, max_depth=10, random_state=42),
-            'Gradient Boosting': GradientBoostingClassifier(
-                n_estimators=100, learning_rate=0.1, random_state=42),
-        }
-        self.best_model      = None
-        self.best_model_name = None
-        self.label_encoder   = LabelEncoder()
-        self.is_trained      = False
+        self.model = RandomForestClassifier(n_estimators=100, random_state=42)
+        self.is_trained = False
+        self._train_default_model()
 
-   
-    def _generate_synthetic_data(self, n_samples: int = 2000) -> pd.DataFrame:
-        """Generate realistic synthetic medical dataset"""
+    def _symptoms_to_vector(self, symptoms: List[str]) -> List[int]:
+        symptom_set = {s.lower().strip() for s in symptoms}
+        return [1 if sym in symptom_set else 0 for sym in self.SYMPTOMS]
+
+    def _train_default_model(self):
+        # Synthetic dataset generation based on clinical patterns
         np.random.seed(42)
-        records = []
-
-        # Disease profiles: P(symptom | disease)
-        profiles = {
-            'flu':           {'fever': 0.90, 'cough': 0.85, 'fatigue': 0.88,
-                              'headache': 0.70, 'body_aches': 0.80, 'loss_of_smell': 0.20},
-            'covid19':       {'fever': 0.88, 'cough': 0.80, 'fatigue': 0.90,
-                              'loss_of_smell': 0.85, 'headache': 0.65, 'body_aches': 0.60},
-            'dengue':        {'fever': 0.98, 'rash': 0.75, 'joint_pain': 0.85,
-                              'headache': 0.90, 'fatigue': 0.80, 'body_aches': 0.88},
-            'cardiac_event': {'chest_pain': 0.92, 'shortness_of_breath': 0.88,
-                              'fatigue': 0.70, 'sweating': 0.75, 'headache': 0.30},
-            'diabetes':      {'fatigue': 0.82, 'frequent_urination': 0.95,
-                              'excessive_thirst': 0.92, 'blurred_vision': 0.70,
-                              'weight_loss': 0.50},
-            'common_cold':   {'cough': 0.90, 'fever': 0.50, 'headache': 0.60,
-                              'fatigue': 0.55, 'body_aches': 0.50},
-            'tuberculosis':  {'cough': 0.95, 'weight_loss': 0.85, 'night_sweats': 0.80,
-                              'fatigue': 0.88, 'fever': 0.70},
-            'meningitis':    {'headache': 0.95, 'stiff_neck': 0.90, 'fever': 0.92,
-                              'light_sensitivity': 0.85, 'fatigue': 0.80},
+        X, y = [], []
+        
+        disease_profiles = {
+            'covid19': ['fever', 'cough', 'fatigue', 'loss_of_taste', 'loss_of_smell', 'shortness_of_breath'],
+            'common_cold': ['runny_nose', 'sneezing', 'sore_throat', 'cough'],
+            'flu': ['fever', 'body_aches', 'chills', 'fatigue', 'headache', 'cough'],
+            'tuberculosis': ['cough', 'fever', 'sweating', 'fatigue', 'shortness_of_breath'],
+            'cardiac_event': ['chest_pain', 'shortness_of_breath', 'sweating', 'nausea'],
+            'gastroenteritis': ['nausea', 'diarrhea', 'body_aches', 'fever'],
+            'pneumonia': ['cough', 'fever', 'shortness_of_breath', 'chest_pain', 'chills']
         }
 
+<<<<<<< Updated upstream
         n_per_class = n_samples // len(profiles)
         for disease, symptom_probs in profiles.items():
             for _ in range(n_per_class):
@@ -135,42 +107,50 @@ class MLDiagnosticClassifier:
                 best_score = cv_scores.mean()
                 self.best_model = model
                 self.best_model_name = name
+=======
+        for disease, profile in disease_profiles.items():
+            for _ in range(50):
+                vec = self._symptoms_to_vector(profile)
+                # Introduce slight noise / variation
+                noise = np.random.choice([0, 1], size=len(self.SYMPTOMS), p=[0.9, 0.1])
+                vec = [min(1, max(0, v + n)) for v, n in zip(vec, noise)]
+                X.append(vec)
+                y.append(disease)
+>>>>>>> Stashed changes
 
+        self.model.fit(X, y)
         self.is_trained = True
-        self._X_test = X_test
-        self._y_test = y_test
 
-        if verbose:
-            print(f"\n  Best Model: {self.best_model_name} "
-                  f"(CV accuracy {best_score:.4f})")
-        return results
-
-    
-    def predict(self, symptoms: List[str]) -> Dict:
-        """Predict disease from symptom list"""
+    def predict(self, symptoms: List[str]) -> Dict[str, Any]:
         if not self.is_trained:
-            self.train(verbose=False)
+            self._train_default_model()
 
+<<<<<<< Updated upstream
         features = np.array([
             [1 if s in symptoms else 0
              for s in self.SYMPTOM_FEATURES]
         ])
         pred_encoded = self.best_model.predict(features)[0]
         pred_proba = self.best_model.predict_proba(features)[0]
+=======
+        vector = self._symptoms_to_vector(symptoms)
+        probs = self.model.predict_proba([vector])[0]
+        
+        classes = self.model.classes_
+        results = sorted(zip(classes, probs), key=lambda x: x[1], reverse=True)
+>>>>>>> Stashed changes
 
-        disease = self.label_encoder.inverse_transform([pred_encoded])[0]
-        classes = self.label_encoder.inverse_transform(range(len(pred_proba)))
-        prob_map = dict(zip(classes, pred_proba))
-        top5 = sorted(prob_map.items(), key=lambda x: x[1], reverse=True)[:5]
+        top_dx, top_conf = results[0]
 
         return {
-            'diagnosis': disease,
-            'confidence': round(float(pred_proba[pred_encoded]), 4),
-            'top5': top5,
-            'model_used': self.best_model_name,
-            'symptom_vector': features[0].tolist()
+            'diagnosis': top_dx,
+            'confidence': float(top_conf),
+            'top5': results[:5],
+            'model_used': 'Random Forest',
+            'symptom_vector': vector
         }
 
+<<<<<<< Updated upstream
     def analyze(self, percept) -> Dict:
         """Module interface for the agent (safely handles dict and PatientPercept objects)"""
         if isinstance(percept, dict):
@@ -240,12 +220,20 @@ class MLDiagnosticClassifier:
 if __name__ == "__main__":
     clf = MLDiagnosticClassifier()
     clf.train(verbose=True)
+=======
+    def analyze(self, percept: Union[Dict, Any]) -> Dict:
+        """Module interface for the agent (safely handles dict and PatientPercept objects)"""
+        if isinstance(percept, dict):
+            symptoms = percept.get('symptoms', [])
+        else:
+            symptoms = getattr(percept, 'symptoms', [])
 
-    result = clf.predict(['fever', 'cough', 'fatigue', 'loss_of_smell'])
-    print(f"\nDiagnosis : {result['diagnosis']}")
-    print(f"Confidence: {result['confidence']:.2%}")
-    print(f"Model Used: {result['model_used']}")
-    print(f"Top 5     : {result['top5']}")
+        if not isinstance(symptoms, list):
+            symptoms = []
+>>>>>>> Stashed changes
 
-    path = clf.plot_evaluation()
-    print(f"\nEvaluation plots saved to: {path}")
+        result = self.predict(symptoms)
+        result['summary'] = (f"{result['model_used']}: "
+                             f"{result['diagnosis']} "
+                             f"({result['confidence']*100:.1f}% confidence)")
+        return result

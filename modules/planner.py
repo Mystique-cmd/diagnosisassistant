@@ -1,112 +1,73 @@
 # ============================================================
-# MODULE 7: AI Planning — Treatment Plan Generator
-# Covers: Week 12 (AI Planning Techniques)
+# MODULE 8: Automated Planning — STRIPS Treatment Planner
+# Covers: Week 14 (Automated Planning)
 # ============================================================
 
-from copy import deepcopy
-from collections import deque
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Any, Union
 
 class TreatmentPlanner:
     """
-    STRIPS-based treatment planner.
-    Generates step-by-step treatment plans
-    from patient diagnosis to recovery.
+    STRIPS-based automated planner for generating patient treatment plans.
     """
 
     def __init__(self):
-        self.action_library = self._build_action_library()
-
-    def _build_action_library(self) -> List[Dict]:
-        """Define medical treatment actions"""
-        return [
-            # Emergency Actions
-            {
-                'name': 'CallEmergencyServices',
-                'precond': {'EMERGENCY_CASE', 'PATIENT_PRESENT'},
-                'delete':  {'EMERGENCY_CASE'},
-                'add':     {'EMERGENCY_SERVICES_CALLED'},
-                'cost': 0, 'duration': '5 minutes'
+        # Action Domain Definition (STRIPS Operators)
+        self.actions = {
+            'IsolatePatient': {
+                'preconds': ['CONTAGIOUS_DISEASE'],
+                'add': ['PATIENT_ISOLATED'],
+                'del': [],
+                'duration': '14 days'
             },
-            {
-                'name': 'TransferToICU',
-                'precond': {'EMERGENCY_SERVICES_CALLED', 'ICU_AVAILABLE'},
-                'delete':  {'EMERGENCY_SERVICES_CALLED'},
-                'add':     {'PATIENT_IN_ICU', 'MONITORING_ACTIVE'},
-                'cost': 0, 'duration': '15 minutes'
+            'OrderPCRTest': {
+                'preconds': ['COVID_SUSPECTED'],
+                'add': ['PCR_ORDERED'],
+                'del': [],
+                'duration': '24 hours'
             },
-            # Diagnostics
-            {
-                'name': 'OrderBloodPanel',
-                'precond': {'PATIENT_PRESENT', 'DIAGNOSIS_NEEDED'},
-                'delete':  {'DIAGNOSIS_NEEDED'},
-                'add':     {'BLOOD_RESULTS_PENDING'},
-                'cost': 1, 'duration': '30 minutes'
+            'ReceivePCRResult': {
+                'preconds': ['PCR_ORDERED'],
+                'add': ['PCR_CONFIRMED'],
+                'del': ['COVID_SUSPECTED'],
+                'duration': '24 hours'
             },
-            {
-                'name': 'ReceiveBloodResults',
-                'precond': {'BLOOD_RESULTS_PENDING'},
-                'delete':  {'BLOOD_RESULTS_PENDING'},
-                'add':     {'BLOOD_RESULTS_AVAILABLE', 'DIAGNOSIS_REFINED'},
-                'cost': 0, 'duration': '2 hours'
+            'PrescribeAntiviral': {
+                'preconds': ['VIRAL_INFECTION'],
+                'add': ['TREATMENT_STARTED'],
+                'del': [],
+                'duration': '10 minutes'
             },
-            {
-                'name': 'OrderPCRTest',
-                'precond': {'COVID_SUSPECTED', 'PATIENT_PRESENT'},
-                'delete':  {'COVID_SUSPECTED'},
-                'add':     {'PCR_PENDING'},
-                'cost': 1, 'duration': '24 hours'
+            'AdministerOxygen': {
+                'preconds': ['RESPIRATORY_DISTRESS'],
+                'add': ['OXYGEN_ADMINISTERED'],
+                'del': [],
+                'duration': 'Immediate'
             },
-            {
-                'name': 'ReceivePCRResult',
-                'precond': {'PCR_PENDING'},
-                'delete':  {'PCR_PENDING'},
-                'add':     {'PCR_RESULT_AVAILABLE', 'DIAGNOSIS_CONFIRMED'},
-                'cost': 0, 'duration': '24 hours'
+            'PrescribeAntibiotics': {
+                'preconds': ['BACTERIAL_INFECTION'],
+                'add': ['TREATMENT_STARTED'],
+                'del': [],
+                'duration': '10 minutes'
             },
-            # Treatment
-            {
-                'name': 'PrescribeAntiviral',
-                'precond': {'DIAGNOSIS_CONFIRMED', 'VIRAL_INFECTION'},
-                'delete':  {'VIRAL_INFECTION'},
-                'add':     {'ANTIVIRAL_PRESCRIBED', 'TREATMENT_STARTED'},
-                'cost': 1, 'duration': '10 minutes'
+            'AdministerAspirin': {
+                'preconds': ['CARDIAC_SUSPECTED'],
+                'add': ['CARDIAC_INITIAL_CARE'],
+                'del': [],
+                'duration': 'Immediate'
             },
-            {
-                'name': 'PrescribeAntibiotics',
-                'precond': {'DIAGNOSIS_CONFIRMED', 'BACTERIAL_INFECTION'},
-                'delete':  {'BACTERIAL_INFECTION'},
-                'add':     {'ANTIBIOTICS_PRESCRIBED', 'TREATMENT_STARTED'},
-                'cost': 1, 'duration': '10 minutes'
+            'MonitorVitals': {
+                'preconds': ['PATIENT_PRESENT'],
+                'add': ['VITALS_MONITORED'],
+                'del': [],
+                'duration': 'Continuous'
             },
-            {
-                'name': 'AdministerFluids',
-                'precond': {'PATIENT_IN_ICU', 'DEHYDRATION_RISK'},
-                'delete':  {'DEHYDRATION_RISK'},
-                'add':     {'FLUIDS_ADMINISTERED'},
-                'cost': 1, 'duration': '1 hour'
+            'ScheduleFollowUp': {
+                'preconds': ['TREATMENT_STARTED'],
+                'add': ['FOLLOWUP_SCHEDULED'],
+                'del': [],
+                'duration': '5 minutes'
             },
-            {
-                'name': 'MonitorVitals',
-                'precond': {'TREATMENT_STARTED', 'PATIENT_PRESENT'},
-                'delete':  set(),
-                'add':     {'VITALS_MONITORED'},
-                'cost': 0, 'duration': 'Continuous'
-            },
-            {
-                'name': 'IsolatePatient',
-                'precond': {'CONTAGIOUS_DISEASE', 'PATIENT_PRESENT'},
-                'delete':  {'CONTAGIOUS_DISEASE'},
-                'add':     {'PATIENT_ISOLATED'},
-                'cost': 0, 'duration': '14 days'
-            },
-            {
-                'name': 'ScheduleFollowUp',
-                'precond': {'TREATMENT_STARTED', 'VITALS_MONITORED'},
-                'delete':  set(),
-                'add':     {'FOLLOWUP_SCHEDULED', 'PLAN_COMPLETE'},
-                'cost': 0, 'duration': '5 minutes'
-            },
+<<<<<<< Updated upstream
             {
                 'name': 'DischargePatient',
                 'precond': {'PLAN_COMPLETE', 'SYMPTOMS_RESOLVED'},
@@ -189,24 +150,26 @@ class TreatmentPlanner:
                 'action':   a['name'],
                 'duration': a['duration'],
                 'cost':     a['cost']
+=======
+            'RestAndHydrate': {
+                'preconds': ['MILD_ILLNESS'],
+                'add': ['TREATMENT_STARTED'],
+                'del': [],
+                'duration': '3-5 days'
+>>>>>>> Stashed changes
             }
-            for i, a in enumerate(plan)
-        ]
-
-        return {
-            'diagnosis':     diagnosis,
-            'urgency':       urgency,
-            'initial_state': sorted(initial_state),
-            'goal_state':    sorted(goal_state),
-            'steps':         len(plan_steps),
-            'total_duration': self._estimate_duration(plan),
-            'plan':          plan_steps
         }
 
-    def _estimate_duration(self, plan: List[Dict]) -> str:
-        durations = [a['duration'] for a in plan]
-        return f"{len(plan)} actions | see individual durations"
+    def _normalize_diagnosis(self, dx: str) -> str:
+        dx_clean = str(dx).lower().replace('_', '').replace('-', '').replace(' ', '')
+        if 'covid' in dx_clean: return 'covid19'
+        if 'cardiac' in dx_clean or 'heart' in dx_clean: return 'cardiac_event'
+        if 'cold' in dx_clean: return 'common_cold'
+        if 'flu' in dx_clean or 'influenza' in dx_clean: return 'flu'
+        if 'pneumonia' in dx_clean: return 'pneumonia'
+        return dx_clean
 
+<<<<<<< Updated upstream
     def analyze(self, percept) -> Dict:
         """Module interface — generates a treatment plan from patient percept"""
         if isinstance(percept, dict):
@@ -215,19 +178,60 @@ class TreatmentPlanner:
         else:
             dx = getattr(percept, 'diagnosis', 'flu')
             urgency = getattr(percept, 'urgency', 'MEDIUM')
+=======
+    def generate_plan(self, diagnosis: str, urgency: str = "MODERATE") -> List[Dict[str, Any]]:
+        dx_key = self._normalize_diagnosis(diagnosis)
+>>>>>>> Stashed changes
 
-        result = self.create_treatment_plan(dx, urgency)
+        # Initial state setup based on normalized diagnosis
+        initial_state = {'PATIENT_PRESENT'}
         
-        num_steps = result.get('steps', len(result.get('plan', [])))
-        
-        result['module']     = 'Treatment Planner'
-        result['summary']    = f"Plan: {num_steps} steps generated"
-        result['diagnosis']  = dx
-        result['confidence'] = 1.0
-        return result
+        if dx_key == 'covid19':
+            initial_state.update({'CONTAGIOUS_DISEASE', 'COVID_SUSPECTED', 'VIRAL_INFECTION'})
+        elif dx_key == 'cardiac_event':
+            initial_state.update({'CARDIAC_SUSPECTED', 'RESPIRATORY_DISTRESS'})
+        elif dx_key in ['common_cold', 'flu']:
+            initial_state.update({'VIRAL_INFECTION', 'MILD_ILLNESS'})
+        else:
+            initial_state.update({'MILD_ILLNESS'})
 
+        # Forward State-Space Search Planner
+        current_state = set(initial_state)
+        plan = []
+        step_num = 1
 
-if __name__ == "__main__":
-    planner = TreatmentPlanner()
-    test_plan = planner.create_treatment_plan("covid19", "HIGH")
-    print("Generated Plan:", test_plan)
+        # Determine sequence of actions based on initial state predicates
+        for action_name, details in self.actions.items():
+            preconds = set(details['preconds'])
+            if preconds.issubset(current_state):
+                plan.append({
+                    'step': step_num,
+                    'action': action_name,
+                    'duration': details['duration']
+                })
+                # State transition
+                current_state.update(details['add'])
+                current_state.difference_update(details['del'])
+                step_num += 1
+
+        return plan
+
+    def analyze(self, percept: Union[Dict, Any]) -> Dict:
+        """Module interface for the agent (handles dict and object inputs)"""
+        if isinstance(percept, dict):
+            dx = percept.get('diagnosis', 'common_cold')
+            urgency = percept.get('urgency', 'MODERATE')
+        else:
+            dx = getattr(percept, 'diagnosis', 'common_cold')
+            urgency = getattr(percept, 'urgency', 'MODERATE')
+
+        plan_steps = self.generate_plan(dx, urgency)
+
+        return {
+            'diagnosis': dx,
+            'urgency': urgency,
+            'steps': len(plan_steps),
+            'total_duration': f"{len(plan_steps)} actions | see individual durations",
+            'plan': plan_steps,
+            'summary': f"Generated {len(plan_steps)}-step treatment plan for {dx}"
+        }
