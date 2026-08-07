@@ -151,18 +151,18 @@ class TreatmentPlanner:
 
         # Map diagnosis to initial state predicates
         diagnosis_states = {
-            'flu':          {'VIRAL_INFECTION', 'DIAGNOSIS_NEEDED'},
-            'covid19':      {'COVID_SUSPECTED', 'CONTAGIOUS_DISEASE',
-                             'DIAGNOSIS_NEEDED'},
-            'cardiac_event':{'EMERGENCY_CASE',  'ICU_AVAILABLE'},
-            'dengue':       {'VIRAL_INFECTION',  'DIAGNOSIS_NEEDED',
-                             'DEHYDRATION_RISK'},
-            'meningitis':   {'EMERGENCY_CASE',  'BACTERIAL_INFECTION',
-                             'ICU_AVAILABLE'},
-            'tuberculosis': {'BACTERIAL_INFECTION', 'CONTAGIOUS_DISEASE',
-                             'DIAGNOSIS_NEEDED'},
-            'diabetes':     {'DIAGNOSIS_NEEDED'},
-            'common_cold':  {'VIRAL_INFECTION', 'DIAGNOSIS_NEEDED'},
+            'flu':           {'VIRAL_INFECTION', 'DIAGNOSIS_NEEDED'},
+            'covid19':       {'COVID_SUSPECTED', 'CONTAGIOUS_DISEASE',
+                              'DIAGNOSIS_NEEDED'},
+            'cardiac_event': {'EMERGENCY_CASE',  'ICU_AVAILABLE'},
+            'dengue':        {'VIRAL_INFECTION',  'DIAGNOSIS_NEEDED',
+                              'DEHYDRATION_RISK'},
+            'meningitis':    {'EMERGENCY_CASE',  'BACTERIAL_INFECTION',
+                              'ICU_AVAILABLE'},
+            'tuberculosis':  {'BACTERIAL_INFECTION', 'CONTAGIOUS_DISEASE',
+                              'DIAGNOSIS_NEEDED'},
+            'diabetes':      {'DIAGNOSIS_NEEDED'},
+            'common_cold':   {'VIRAL_INFECTION', 'DIAGNOSIS_NEEDED'},
         }
 
         base_state = {'PATIENT_PRESENT'}
@@ -209,8 +209,12 @@ class TreatmentPlanner:
 
     def analyze(self, percept) -> Dict:
         """Module interface — generates a treatment plan from patient percept"""
-        dx = getattr(percept, 'diagnosis', 'flu')
-        urgency = getattr(percept, 'urgency', 'MEDIUM')
+        if isinstance(percept, dict):
+            dx = percept.get('diagnosis', 'flu')
+            urgency = percept.get('urgency', 'MEDIUM')
+        else:
+            dx = getattr(percept, 'diagnosis', 'flu')
+            urgency = getattr(percept, 'urgency', 'MEDIUM')
 
         result = self.create_treatment_plan(dx, urgency)
         

@@ -5,6 +5,7 @@
 
 from typing import Dict, Any, Union
 
+
 class FuzzySeverityAssessor:
     """
     Fuzzy logic system for patient severity assessment.
@@ -33,33 +34,38 @@ class FuzzySeverityAssessor:
     def _membership_temp(self, temp: float) -> Dict[str, float]:
         """Temperature membership functions (triangular / trapezoidal)"""
         return {
-            'normal':   self._trap(temp, 34.0, 36.5, 37.0, 37.8),
+            'normal':   self._trap(temp, 30.0, 35.0, 37.0, 37.8),
             'mild':     self._tri(temp, 37.0, 38.0, 39.0),
-            'high':     self._tri(temp, 38.5, 39.5, 40.5),
-            'critical': self._trap(temp, 39.0, 40.0, 45.0, 50.0)
+            'high':     self._tri(temp, 38.0, 39.0, 40.5),
+            'critical': self._trap(temp, 39.5, 40.5, 45.0, 50.0)
         }
 
-    def _membership_hr(self, hr: int) -> Dict[str, float]:
+    def _membership_hr(self, hr: float) -> Dict[str, float]:
         """Heart rate membership functions (triangular / trapezoidal)"""
         return {
-            'low':      self._tri(hr, 30, 55, 70),
-            'normal':   self._tri(hr, 65, 80, 95),
-            'elevated': self._tri(hr, 90, 100, 110),
-            'high':     self._trap(hr, 100, 115, 160, 200)
+            'low':      self._trap(hr, 20, 30, 55, 70),
+            'normal':   self._tri(hr, 60, 75, 95),
+            'elevated': self._tri(hr, 85, 100, 115),
+            'high':     self._trap(hr, 105, 120, 180, 250)
         }
 
-    def _membership_symptoms(self, count: int) -> Dict[str, float]:
+    def _membership_symptoms(self, count: float) -> Dict[str, float]:
         """Symptom count membership functions (tri / trap)"""
         return {
-            'few':      self._tri(count, 0, 1, 3),
+            'few':      self._trap(count, 0, 0, 1, 3),
             'moderate': self._tri(count, 2, 4, 6),
-            'many':     self._trap(count, 5, 7, 20, 30)
+            'many':     self._trap(count, 5, 7, 20, 50)
         }
 
     def _defuzzify(self, severity_rules: Dict[str, float]) -> float:
-        """Centroid defuzzification"""
-        centers = {'low': 15, 'mild': 35, 'moderate': 55,
-                   'high': 75, 'critical': 92}
+        """Centroid defuzzification with safe fallback"""
+        centers = {
+            'low': 15.0,
+            'mild': 35.0,
+            'moderate': 55.0,
+            'high': 75.0,
+            'critical': 92.0
+        }
         numerator = 0.0
         denominator = 0.0
         for k, v in severity_rules.items():
@@ -67,18 +73,17 @@ class FuzzySeverityAssessor:
                 numerator += centers[k] * v
                 denominator += v
         if denominator == 0.0:
-            return 0.0
+            # Fallback to a neutral baseline score if rule coverage is 0
+            return 30.0
         return numerator / denominator
 
     def assess(self, temperature: float, heart_rate: int,
                symptom_count: int) -> Dict:
         """Full fuzzy inference pipeline"""
-        # Fuzzification
         temp_mf    = self._membership_temp(temperature)
         hr_mf      = self._membership_hr(heart_rate)
         symptom_mf = self._membership_symptoms(symptom_count)
 
-        # Rule evaluation (min for AND, max for OR)
         rules = {
             'critical': max(
                 min(temp_mf['critical'], hr_mf['high']),
@@ -104,7 +109,6 @@ class FuzzySeverityAssessor:
                        symptom_mf['few'])
         }
 
-        # Defuzzification
         severity_score = self._defuzzify(rules)
         severity_label = self._classify(severity_score)
 
@@ -114,34 +118,60 @@ class FuzzySeverityAssessor:
             'rule_strengths': {k: round(v, 3) for k, v in rules.items()},
             'memberships': {
                 'temperature': temp_mf,
-                'heart_rate':  hr_mf,
-                'symptoms':    symptom_mf
+                'heart_rate':   hr_mf,
+                'symptoms':     symptom_mf
             }
         }
 
     def _classify(self, score: float) -> str:
-        if score >= 80: return "CRITICAL"
-        elif score >= 60: return "HIGH"
-        elif score >= 40: return "MODERATE"
-        elif score >= 20: return "MILD"
+        if score >= 80:
+            return "CRITICAL"
+        elif score >= 60:
+            return "HIGH"
+        elif score >= 40:
+            return "MODERATE"
+        elif score >= 20:
+            return "MILD"
         return "LOW"
 
+    def _extract_symptom_count(self, raw_symptoms: Any) -> int:
+        """Robust helper to extract numeric symptom count"""
+        if isinstance(raw_symptoms, (list, tuple, set)):
+            return len(raw_symptoms)
+        elif isinstance(raw_symptoms, (int, float)):
+            return int(raw_symptoms)
+        elif isinstance(raw_symptoms, str) and raw_symptoms.isdigit():
+            return int(raw_symptoms)
+        return 0
+
     def analyze(self, percept: Union[Dict, Any]) -> Dict:
-        """Module interface for the agent (safely handles dict and PatientPercept objects)"""
+        """Module interface for the agent (handles dict and PatientPercept objects)"""
         if isinstance(percept, dict):
             temp = float(percept.get('temperature', percept.get('temp', 37.0)))
             hr = int(percept.get('heart_rate', percept.get('hr', 70)))
-            symptoms = percept.get('symptoms', [])
-            symptom_count = len(symptoms) if isinstance(symptoms, list) else 0
+            raw_symptoms = percept.get('symptoms', percept.get('symptom_count', []))
         else:
             temp = float(getattr(percept, 'temperature', 37.0))
             hr = int(getattr(percept, 'heart_rate', 70))
-            symptoms = getattr(percept, 'symptoms', [])
-            symptom_count = len(symptoms) if isinstance(symptoms, list) else 0
+            raw_symptoms = getattr(percept, 'symptoms', getattr(percept, 'symptom_count', []))
+
+        symptom_count = self._extract_symptom_count(raw_symptoms)
 
         result = self.assess(temp, hr, symptom_count)
-        result['summary']   = (f"Severity: {result['severity_label']} "
-                               f"({result['severity_score']:.1f}/100)")
+        result['module']    = 'Fuzzy Assessor'
+        result['summary']   = f"Severity: {result['severity_label']} ({result['severity_score']:.1f}/100)"
         result['diagnosis'] = result['severity_label']
-        result['confidence']= result['severity_score'] / 100
+        result['confidence']= result['severity_score'] / 100.0
         return result
+
+
+if __name__ == "__main__":
+    assessor = FuzzySeverityAssessor()
+    
+    # Test case 1: Dictionary with list of symptoms
+    dict_percept = {'temp': 38.8, 'hr': 102, 'symptoms': ['fever', 'cough', 'fatigue']}
+    print("Dict Test:", assessor.analyze(dict_percept)['summary'])
+    
+    # Test case 2: Numeric symptom count directly passed
+    num_percept = {'temperature': 39.2, 'heart_rate': 110, 'symptoms': 5}
+    print("Numeric Symptom Test:", assessor.analyze(num_percept)['summary'])

@@ -103,9 +103,6 @@ class MLDiagnosticClassifier:
         X = df[self.SYMPTOM_FEATURES].values
         y = self.label_encoder.fit_transform(df['disease'])
 
-        # Test data is held out here and never touches training or
-        # model-selection below — only used for the final scoreboard
-        # and for the confusion-matrix / feature-importance plots.
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42, stratify=y)
 
@@ -120,9 +117,6 @@ class MLDiagnosticClassifier:
         for name, model in self.models.items():
             model.fit(X_train, y_train)
 
-            # 5-fold cross validation, computed on the training split
-            # only, to check the model generalizes rather than just
-            # memorizing the training data.
             cv_scores = cross_val_score(model, X_train, y_train, cv=5, scoring='accuracy')
             test_acc = model.score(X_test, y_test)
 
@@ -137,10 +131,6 @@ class MLDiagnosticClassifier:
                       f"(+/- {cv_scores.std():.4f})")
                 print(f"     Test Accuracy: {test_acc:.4f}")
 
-            # NOTE: model selection uses 5-fold CV accuracy (the metric
-            # the spec calls out for choosing the best model, since it's
-            # a better estimate of generalization than a single test
-            # split). We still report test_acc above for visibility.
             if cv_scores.mean() > best_score:
                 best_score = cv_scores.mean()
                 self.best_model = model
@@ -161,8 +151,6 @@ class MLDiagnosticClassifier:
         if not self.is_trained:
             self.train(verbose=False)
 
-        # Symptom strings are converted into the fixed 18-dim binary
-        # vector before ever touching the model.
         features = np.array([
             [1 if s in symptoms else 0
              for s in self.SYMPTOM_FEATURES]
@@ -184,8 +172,16 @@ class MLDiagnosticClassifier:
         }
 
     def analyze(self, percept) -> Dict:
-        """Module interface for the agent"""
-        result = self.predict(percept.symptoms)
+        """Module interface for the agent (safely handles dict and PatientPercept objects)"""
+        if isinstance(percept, dict):
+            symptoms = percept.get('symptoms', [])
+        else:
+            symptoms = getattr(percept, 'symptoms', [])
+
+        if not isinstance(symptoms, list):
+            symptoms = []
+
+        result = self.predict(symptoms)
         result['summary'] = (f"{result['model_used']}: "
                              f"{result['diagnosis']} "
                              f"({result['confidence']:.2%})")
@@ -239,7 +235,6 @@ class MLDiagnosticClassifier:
         plt.close(fig)
         print(f"Saved: {save_path}")
         return save_path
-
 
 
 if __name__ == "__main__":
