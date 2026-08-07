@@ -3,7 +3,7 @@
 # Covers: Week 12 (Fuzzy Logic)
 # ============================================================
 
-from typing import Dict
+from typing import Dict, Any, Union
 
 class FuzzySeverityAssessor:
     """
@@ -126,12 +126,23 @@ class FuzzySeverityAssessor:
         elif score >= 20: return "MILD"
         return "LOW"
 
-    def analyze(self, percept) -> Dict:
-        """Module interface for the agent"""
+    def analyze(self, percept: Union[Dict, Any]) -> Dict:
+        """Module interface for the agent (safely handles both dict and PatientPercept objects)"""
+        if isinstance(percept, dict):
+            temp = float(percept.get('temperature', percept.get('temp', 37.0)))
+            hr = int(percept.get('heart_rate', percept.get('hr', 70)))
+            symptoms = percept.get('symptoms', [])
+            symptom_count = len(symptoms) if isinstance(symptoms, list) else 0
+        else:
+            temp = float(getattr(percept, 'temperature', 37.0))
+            hr = int(getattr(percept, 'heart_rate', 70))
+            symptoms = getattr(percept, 'symptoms', [])
+            symptom_count = len(symptoms) if isinstance(symptoms, list) else 0
+
         result = self.assess(
-            percept.temperature,
-            percept.heart_rate,
-            len(percept.symptoms)
+            temp,
+            hr,
+            symptom_count
         )
         result['summary']   = (f"Severity: {result['severity_label']} "
                                f"({result['severity_score']:.1f}/100)")
