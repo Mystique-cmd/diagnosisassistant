@@ -1,11 +1,16 @@
-# Merge-Conflict Resolution Task
+# TODO — Fix `modules/planner.py` SyntaxError
 
-Goal: Resolve `git stash` merge-conflict markers so `python app.py` runs.
+## Problem
+`modules/planner.py` contains unresolved Git merge conflict markers
+(`<<<<<<< Updated upstream`, `=======`, `>>>>>>> Stashed changes`) from a
+`git stash` merge, causing a Python `SyntaxError` when `app.py` imports it.
 
 ## Steps
-- [ ] Rewrite `modules/ml_classifier.py` with the **Updated upstream** implementation (ensemble models, CV model selection, `train()`, `predict()`, `analyze()`, `plot_evaluation()`)
-- [ ] Rewrite `modules/planner.py` with the **Updated upstream** implementation (STRIPS action library, BFS `generate_plan()`, `create_treatment_plan()`, `analyze()`)
-- [ ] Verify no conflict markers remain anywhere in `*.py`
-- [ ] Byte-compile all Python sources (`python -m compileall .`)
-- [ ] Smoke-test module imports and app initialization
+- [ ] Step 1: Rewrite `modules/planner.py` — remove all conflict markers,
+      merge the upstream (BFS-based) and stashed branches into one clean
+      STRIPS planner with a uniform action schema.
+- [ ] Step 2: Verify the file compiles with `python -m py_compile modules/planner.py`.
+- [ ] Step 3: Smoke-test import + `analyze()` without launching the GUI:
+      `python -c "from modules.planner import TreatmentPlanner; ..."`.
+- [ ] Step 4: Confirm `app.py` imports cleanly (GUI launch left to the user).
 
