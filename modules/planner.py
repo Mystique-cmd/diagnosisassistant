@@ -67,15 +67,13 @@ class TreatmentPlanner:
                 'del': [],
                 'duration': '5 minutes'
             },
-<<<<<<< Updated upstream
-            {
-                'name': 'DischargePatient',
+            'DischargePatient': {
                 'precond': {'PLAN_COMPLETE', 'SYMPTOMS_RESOLVED'},
                 'delete':  {'PLAN_COMPLETE'},
                 'add':     {'PATIENT_DISCHARGED'},
                 'cost': 0, 'duration': '30 minutes'
             },
-        ]
+        }
 
     def _apply_action(self, state: frozenset,
                       action: Dict) -> Optional[frozenset]:
@@ -150,15 +148,8 @@ class TreatmentPlanner:
                 'action':   a['name'],
                 'duration': a['duration'],
                 'cost':     a['cost']
-=======
-            'RestAndHydrate': {
-                'preconds': ['MILD_ILLNESS'],
-                'add': ['TREATMENT_STARTED'],
-                'del': [],
-                'duration': '3-5 days'
->>>>>>> Stashed changes
             }
-        }
+        ]
 
     def _normalize_diagnosis(self, dx: str) -> str:
         dx_clean = str(dx).lower().replace('_', '').replace('-', '').replace(' ', '')
@@ -169,7 +160,6 @@ class TreatmentPlanner:
         if 'pneumonia' in dx_clean: return 'pneumonia'
         return dx_clean
 
-<<<<<<< Updated upstream
     def analyze(self, percept) -> Dict:
         """Module interface — generates a treatment plan from patient percept"""
         if isinstance(percept, dict):
@@ -178,10 +168,6 @@ class TreatmentPlanner:
         else:
             dx = getattr(percept, 'diagnosis', 'flu')
             urgency = getattr(percept, 'urgency', 'MEDIUM')
-=======
-    def generate_plan(self, diagnosis: str, urgency: str = "MODERATE") -> List[Dict[str, Any]]:
-        dx_key = self._normalize_diagnosis(diagnosis)
->>>>>>> Stashed changes
 
         # Initial state setup based on normalized diagnosis
         initial_state = {'PATIENT_PRESENT'}
