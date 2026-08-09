@@ -4,10 +4,19 @@
 # ============================================================
 
 from typing import Dict, List
+import os
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 from tensorflow.keras import layers, models, callbacks
+from tensorflow.keras.models import load_model
+from tensorflow.keras.utils import to_categorical
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
+
+# Suppress TensorFlow logging warnings for a cleaner terminal
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 class NeuralDiagnosticModel:
     """
@@ -16,12 +25,10 @@ class NeuralDiagnosticModel:
     """
 
     SYMPTOM_FEATURES = [
-        'fever', 'cough', 'fatigue', 'headache',
-        'body_aches', 'loss_of_smell', 'chest_pain',
-        'rash', 'joint_pain', 'shortness_of_breath',
-        'sweating', 'frequent_urination', 'excessive_thirst',
-        'blurred_vision', 'night_sweats', 'weight_loss',
-        'stiff_neck', 'light_sensitivity'
+        'fever', 'cough', 'fatigue', 'difficulty_breathing',
+        'muscle_ache', 'headache', 'sore_throat', 'nausea',
+        'chills', 'vomiting', 'diarrhea', 'rash', 'loss_of_smell',
+        'chest_pain', 'joint_pain', 'sweating', 'abdominal_pain', 'runny_nose'
     ]
 
     DISEASE_LABELS = [
@@ -33,45 +40,109 @@ class NeuralDiagnosticModel:
         self.model      = None
         self.history    = None
         self.is_trained = False
+        self.label_encoder = LabelEncoder()
+        
+        # Paths for saving the compiled model and the label mapping
+        self.model_path = 'data/dnn_model.h5'
+        self.classes_path = 'data/dnn_classes.npy'
+        
         self._build_model()
 
-    def _build_model(self):
+    def _build_model(self, n_outputs=None):
         """Build deep MLP architecture"""
         n_inputs  = len(self.SYMPTOM_FEATURES)
-        n_outputs = len(self.DISEASE_LABELS)
+        if n_outputs is None:
+            n_outputs = len(self.DISEASE_LABELS)
 
         self.model = models.Sequential([
             layers.Input(shape=(n_inputs,)),
 
-            # Block 1
-            layers.Dense(128, activation='relu',
-                         kernel_regularizer=tf.keras.regularizers.l2(0.001)),
-            layers.BatchNormalization(),
-            layers.Dropout(0.3),
-
-            # Block 2
-            layers.Dense(64, activation='relu',
-                         kernel_regularizer=tf.keras.regularizers.l2(0.001)),
-            layers.BatchNormalization(),
+            # Block 1: 32 nodes, ReLU activation with dropout
+            layers.Dense(32, activation='relu'),
             layers.Dropout(0.2),
 
-            # Block 3
-            layers.Dense(32, activation='relu'),
-            layers.BatchNormalization(),
+            # Block 2: 16 nodes, ReLU activation
+            layers.Dense(16, activation='relu'),
 
-            # Output
+            # Output: Softmax activation for probability distribution
             layers.Dense(n_outputs, activation='softmax')
         ], name='MedicalDNN')
 
         self.model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
-            loss='sparse_categorical_crossentropy',
+            optimizer='adam',
+            loss='categorical_crossentropy',
             metrics=['accuracy']
         )
 
+    def load_trained_model(self):
+        """Loads the pre-trained Keras model and label mappings."""
+        if os.path.exists(self.model_path) and os.path.exists(self.classes_path):
+            self.model = load_model(self.model_path)
+            self.label_encoder.classes_ = np.load(self.classes_path, allow_pickle=True)
+            self.is_trained = True
+            print(f"Models loaded from disk successfully.")
+            return True
+        else:
+            print("No saved Neural Network found. You must call train_model() first.")
+            return False
+
+    def save_trained_model(self):
+        """Save the trained model and label encoder classes."""
+        os.makedirs('data', exist_ok=True)
+        self.model.save(self.model_path)
+        np.save(self.classes_path, self.label_encoder.classes_)
+        print(f"Model saved to {self.model_path}")
+
+    def train_model(self, csv_path="data/final_training_data.csv", epochs: int = 50):
+        """Loads data from CSV, encodes labels, and trains the Deep Neural Network."""
+        print(f"Loading data from {csv_path} for DNN training...")
+        
+        if not os.path.exists(csv_path):
+            raise FileNotFoundError(f"Could not find {csv_path}.")
+            
+        df = pd.read_csv(csv_path)
+        
+        # 1. Prepare Inputs (X)
+        X = df[self.SYMPTOM_FEATURES].values
+        
+        # 2. Prepare Outputs (y)
+        # Convert string labels into integer categories
+        y_encoded = self.label_encoder.fit_transform(df['disease'])
+        
+        # Convert integers into One-Hot Encoded arrays
+        y_categorical = to_categorical(y_encoded)
+        
+        num_classes = len(self.label_encoder.classes_)
+        
+        # 3. Split the Data
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y_categorical, test_size=0.2, random_state=42
+        )
+        
+        # 4. Build and Train
+        print(f"Building MLP with 18 inputs and {num_classes} outputs...")
+        self._build_model(num_classes)
+        
+        print(f"Training Neural Network for {epochs} epochs...")
+        self.history = self.model.fit(
+            X_train, y_train, 
+            epochs=epochs, 
+            batch_size=32, 
+            validation_data=(X_test, y_test),
+            verbose=1
+        )
+        
+        # 5. Evaluate Accuracy
+        loss, accuracy = self.model.evaluate(X_test, y_test, verbose=0)
+        print(f"\nTraining Complete. Final Test Accuracy: {accuracy:.2%}")
+        
+        # 6. Save the model and the label encoder classes
+        self.save_trained_model()
+        self.is_trained = True
+        return {'test_accuracy': accuracy}
+
     def _generate_data(self, n: int = 3000):
         """Generate synthetic training data"""
-        from sklearn.preprocessing import LabelEncoder
         np.random.seed(42)
 
         profiles = {
@@ -111,8 +182,22 @@ class NeuralDiagnosticModel:
         idx = np.random.permutation(len(X))
         return X[idx], y[idx]
 
-    def train(self, epochs: int = 50, verbose: int = 1) -> Dict:
-        """Train the neural network"""
+    def train(self, csv_path="data/final_training_data.csv", use_synthetic=False, epochs: int = 50, verbose: int = 1) -> Dict:
+        """Train the neural network. Attempts to load from CSV first, falls back to synthetic data."""
+        # Try to load pre-trained models from disk first
+        if self.load_trained_model():
+            if verbose:
+                print(f"Using pre-trained models from disk.")
+            return {}
+        
+        # Try to train from CSV file if it exists
+        if os.path.exists(csv_path) and not use_synthetic:
+            try:
+                return self.train_model(csv_path, epochs)
+            except Exception as e:
+                print(f"Warning: Could not train from CSV ({e}). Falling back to synthetic data.")
+        
+        # Fall back to synthetic data generation
         X, y = self._generate_data(3000)
         split = int(0.8 * len(X))
         X_train, X_val = X[:split], X[split:]
@@ -128,9 +213,9 @@ class NeuralDiagnosticModel:
         ]
 
         print("=" * 55)
-        print("  Neural Network — Medical Diagnosis Training")
+        print("  Neural Network — Medical Diagnosis Training (Synthetic Data)")
         print(f"  Architecture: {len(self.SYMPTOM_FEATURES)} → "
-              f"128 → 64 → 32 → {len(self.DISEASE_LABELS)}")
+              f"32 → 16 → {len(self.DISEASE_LABELS)}")
         print("=" * 55)
         self.model.summary()
 
@@ -149,7 +234,8 @@ class NeuralDiagnosticModel:
     def predict(self, symptoms: List[str]) -> Dict:
         """Predict from symptom list"""
         if not self.is_trained:
-            self.train(verbose=0)
+            if not self.load_trained_model():
+                self.train(verbose=0)
 
         features = np.array([
             [1.0 if feat in [s.lower().replace(' ','_')
@@ -205,3 +291,20 @@ class NeuralDiagnosticModel:
         plt.tight_layout()
         plt.savefig("nn_training.png", dpi=150)
         plt.show()
+
+
+if __name__ == "__main__":
+    nn = NeuralDiagnosticModel()
+    
+    # Try to train from CSV file, with fallback to synthetic data
+    print("Training from CSV file (data/final_training_data.csv)...\n")
+    try:
+        nn.train_model("data/final_training_data.csv", epochs=50)
+    except Exception as e:
+        print(f"CSV training failed ({e}). Using synthetic data instead.\n")
+        nn.train(use_synthetic=True, verbose=1)
+    
+    # Test prediction
+    result = nn.predict(['fever', 'cough', 'fatigue', 'loss_of_smell'])
+    print(f"\nDiagnosis : {result['diagnosis']}")
+    print(f"Confidence: {result['confidence']:.2%}")

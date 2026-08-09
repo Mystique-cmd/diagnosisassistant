@@ -1,4 +1,5 @@
 from typing import Dict, List
+import os
 
 import numpy as np
 import pandas as pd
@@ -6,7 +7,8 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, accuracy_score
+import joblib  # Used to save and load trained models
 import matplotlib
 
 matplotlib.use("Agg")  # headless-safe backend
@@ -25,12 +27,10 @@ class MLDiagnosticClassifier:
     """
 
     SYMPTOM_FEATURES = [
-        'fever', 'cough', 'fatigue', 'headache',
-        'body_aches', 'loss_of_smell', 'chest_pain',
-        'rash', 'joint_pain', 'shortness_of_breath',
-        'sweating', 'frequent_urination', 'excessive_thirst',
-        'blurred_vision', 'night_sweats', 'weight_loss',
-        'stiff_neck', 'light_sensitivity'
+        'fever', 'cough', 'fatigue', 'difficulty_breathing',
+        'muscle_ache', 'headache', 'sore_throat', 'nausea',
+        'chills', 'vomiting', 'diarrhea', 'rash', 'loss_of_smell',
+        'chest_pain', 'joint_pain', 'sweating', 'abdominal_pain', 'runny_nose'
     ]
 
     DISEASE_LABELS = [
@@ -52,6 +52,87 @@ class MLDiagnosticClassifier:
         self.label_encoder   = LabelEncoder()
         self.is_trained      = False
 
+    def load_trained_models(self):
+        """Loads models from disk if they exist."""
+        if os.path.exists('data/trained_models.pkl'):
+            self.models = joblib.load('data/trained_models.pkl')
+            self.is_trained = True
+            print("Models loaded from disk successfully.")
+            return True
+        else:
+            print("No saved models found at data/trained_models.pkl")
+            return False
+
+    def save_trained_models(self):
+        """Save the trained models to disk for faster loading."""
+        os.makedirs('data', exist_ok=True)
+        joblib.dump(self.models, 'data/trained_models.pkl')
+        print("Models saved to data/trained_models.pkl")
+
+    def train_models_from_csv(self, csv_path="data/final_training_data.csv", verbose: bool = True) -> Dict:
+        """Train all models from actual CSV dataset instead of synthetic data."""
+        print(f"Loading training data from {csv_path}...")
+        
+        if not os.path.exists(csv_path):
+            raise FileNotFoundError(f"Could not find {csv_path}. Did you run the data generator?")
+            
+        df = pd.read_csv(csv_path)
+        
+        # X is the input (the 18 symptoms)
+        # y is the output (the disease label)
+        X = df[self.SYMPTOM_FEATURES]
+        y = df['disease']
+        
+        # Encode the disease labels
+        y_encoded = self.label_encoder.fit_transform(y)
+        
+        # Split the data: 80% for training, 20% for testing
+        print("Splitting data into 80% training and 20% testing...")
+        X_train, X_test, y_train, y_test = train_test_split(
+            X.values, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded)
+        
+        # Train each model
+        print("Training models (this may take a moment)...")
+        results = {}
+        best_score = -np.inf
+        
+        for name, model in self.models.items():
+            model.fit(X_train, y_train)
+            
+            # Test accuracy on the 20% holdout set
+            predictions = model.predict(X_test)
+            acc = accuracy_score(y_test, predictions)
+            
+            # 5-fold cross validation on training set
+            cv_scores = cross_val_score(model, X_train, y_train, cv=5, scoring='accuracy')
+            
+            results[name] = {
+                'cv_mean': cv_scores.mean(),
+                'cv_std': cv_scores.std(),
+                'test_acc': acc
+            }
+            
+            if verbose:
+                print(f"  - {name}")
+                print(f"     CV Accuracy  : {cv_scores.mean():.4f} (+/- {cv_scores.std():.4f})")
+                print(f"     Test Accuracy: {acc:.2%}")
+            
+            # Select best model based on CV accuracy
+            if cv_scores.mean() > best_score:
+                best_score = cv_scores.mean()
+                self.best_model = model
+                self.best_model_name = name
+            
+        self.is_trained = True
+        self._X_test = X_test
+        self._y_test = y_test
+        
+        if verbose:
+            print(f"\n  Best Model: {self.best_model_name} (CV accuracy {best_score:.4f})")
+        
+        # Save the trained models so you don't have to re-train every time you run app.py
+        self.save_trained_models()
+        return results
    
     def _generate_synthetic_data(self, n_samples: int = 2000) -> pd.DataFrame:
         """Generate realistic synthetic medical dataset"""
@@ -97,8 +178,29 @@ class MLDiagnosticClassifier:
         return df
 
     
-    def train(self, verbose: bool = True) -> Dict:
-        """Train all models and select the best one"""
+    def train(self, csv_path="data/final_training_data.csv", use_synthetic=False, verbose: bool = True) -> Dict:
+        """
+        Train all models. Attempts to load from CSV file first, falls back to synthetic data if needed.
+        
+        Args:
+            csv_path: Path to the training CSV file
+            use_synthetic: If True, force use of synthetic data generation
+            verbose: Print training progress
+        """
+        # Try to load pre-trained models from disk first
+        if self.load_trained_models():
+            if verbose:
+                print(f"Using pre-trained models from disk. Best model: {self.best_model_name}")
+            return {}
+        
+        # Try to train from CSV file if it exists
+        if os.path.exists(csv_path) and not use_synthetic:
+            try:
+                return self.train_models_from_csv(csv_path, verbose)
+            except Exception as e:
+                print(f"Warning: Could not train from CSV ({e}). Falling back to synthetic data.")
+        
+        # Fall back to synthetic data generation
         df = self._generate_synthetic_data(2000)
         X = df[self.SYMPTOM_FEATURES].values
         y = self.label_encoder.fit_transform(df['disease'])
@@ -114,7 +216,7 @@ class MLDiagnosticClassifier:
 
         if verbose:
             print("=" * 55)
-            print("  ML Diagnostic Classifier — Training")
+            print("  ML Diagnostic Classifier — Training (Synthetic Data)")
             print("=" * 55)
 
         for name, model in self.models.items():
@@ -159,7 +261,8 @@ class MLDiagnosticClassifier:
     def predict(self, symptoms: List[str]) -> Dict:
         """Predict disease from symptom list"""
         if not self.is_trained:
-            self.train(verbose=False)
+            if not self.load_trained_models():
+                self.train(verbose=False)
 
         # Symptom strings are converted into the fixed 18-dim binary
         # vector before ever touching the model.
@@ -245,7 +348,14 @@ class MLDiagnosticClassifier:
 
 if __name__ == "__main__":
     clf = MLDiagnosticClassifier()
-    clf.train(verbose=True)
+    
+    # Try to train from CSV file, with fallback to synthetic data
+    print("Training from CSV file (data/final_training_data.csv)...\n")
+    try:
+        clf.train_models_from_csv("data/final_training_data.csv", verbose=True)
+    except Exception as e:
+        print(f"CSV training failed ({e}). Using synthetic data instead.\n")
+        clf.train(use_synthetic=True, verbose=True)
 
     result = clf.predict(['fever', 'cough', 'fatigue', 'loss_of_smell'])
     print(f"\nDiagnosis : {result['diagnosis']}")
