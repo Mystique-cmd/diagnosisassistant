@@ -55,7 +55,14 @@ class MLDiagnosticClassifier:
     def load_trained_models(self):
         """Loads models from disk if they exist."""
         if os.path.exists('data/trained_models.pkl'):
-            self.models = joblib.load('data/trained_models.pkl')
+            models_data = joblib.load('data/trained_models.pkl')
+            self.models = models_data.get('models', self.models)
+            # Restore the label encoder's fitted state
+            if 'label_encoder_classes' in models_data:
+                self.label_encoder.classes_ = models_data['label_encoder_classes']
+            # Set Random Forest as the best model (most robust)
+            self.best_model = self.models.get('Random Forest')
+            self.best_model_name = 'Random Forest'
             self.is_trained = True
             print("Models loaded from disk successfully.")
             return True
@@ -66,7 +73,11 @@ class MLDiagnosticClassifier:
     def save_trained_models(self):
         """Save the trained models to disk for faster loading."""
         os.makedirs('data', exist_ok=True)
-        joblib.dump(self.models, 'data/trained_models.pkl')
+        models_data = {
+            'models': self.models,
+            'label_encoder_classes': self.label_encoder.classes_
+        }
+        joblib.dump(models_data, 'data/trained_models.pkl')
         print("Models saved to data/trained_models.pkl")
 
     def train_models_from_csv(self, csv_path="data/final_training_data.csv", verbose: bool = True) -> Dict:
