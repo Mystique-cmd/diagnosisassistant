@@ -383,6 +383,14 @@ class ModelEvaluator:
                                         if lbl_norm in self._label_encoder.classes_:
                                             idx_l = self._label_encoder.transform([lbl_norm])[0]
                                             score_matrix[i, idx_l] = prob
+                        # Re-normalise rows to sum exactly to 1.0. A module's
+                        # own rounding (e.g. round(x, 4)) or a truncated
+                        # top-N output can leave sums a few 1e-4 off, which
+                        # fails sklearn's strict np.allclose(1, ...) check
+                        # even though the values are "close enough" by eye.
+                        row_sums = score_matrix.sum(axis=1, keepdims=True)
+                        row_sums[row_sums == 0] = 1.0  # avoid div-by-zero
+                        score_matrix = score_matrix / row_sums
                         if len(np.unique(y_true_encoded)) > 1:
                             roc_auc = roc_auc_score(
                                 y_true_encoded, score_matrix,
@@ -403,6 +411,39 @@ class ModelEvaluator:
                                 if disease in self._label_encoder.classes_:
                                     idx_l = self._label_encoder.transform([disease])[0]
                                     score_matrix[i, idx_l] = prob
+                        # Same row re-normalisation as above (see comment).
+                        row_sums = score_matrix.sum(axis=1, keepdims=True)
+                        row_sums[row_sums == 0] = 1.0
+                        score_matrix = score_matrix / row_sums
+                        if len(np.unique(y_true_encoded)) > 1:
+                            roc_auc = roc_auc_score(
+                                y_true_encoded, score_matrix,
+                                multi_class='ovr', average='macro',
+                                labels=range(len(all_labels))
+                            )
+                            y_score = score_matrix
+                    except Exception:
+                        roc_auc = None
+
+                elif name == 'NeuralNetwork' and hasattr(mod, 'predict'):
+                    # NeuralDiagnosticModel.predict() already returns a
+                    # full 'all_probs' dict over all 8 classes, unlike
+                    # MLClassifier's truncated 'top5' — no fallback needed.
+                    try:
+                        score_matrix = np.zeros((n_cases, len(all_labels)))
+                        for i, (_, row) in enumerate(X.iterrows()):
+                            symptoms = self._row_to_symptom_list(row)
+                            result = mod.predict(symptoms)
+                            probs = result.get('all_probs', {})
+                            for label, prob in probs.items():
+                                lbl_norm = label.lower().replace(' ', '_')
+                                if lbl_norm in self._label_encoder.classes_:
+                                    idx_l = self._label_encoder.transform([lbl_norm])[0]
+                                    score_matrix[i, idx_l] = prob
+                        # Same row re-normalisation as above (see comment).
+                        row_sums = score_matrix.sum(axis=1, keepdims=True)
+                        row_sums[row_sums == 0] = 1.0
+                        score_matrix = score_matrix / row_sums
                         if len(np.unique(y_true_encoded)) > 1:
                             roc_auc = roc_auc_score(
                                 y_true_encoded, score_matrix,

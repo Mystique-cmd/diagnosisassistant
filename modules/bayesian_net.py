@@ -14,16 +14,23 @@ class SimpleBayesianDiagnostics:
 
     def __init__(self):
         # Prior probabilities P(Disease)
+        # NOTE: aligned to the shared 8-class DISEASE_LABELS used by
+        # every other module (ml_classifier.py, neural_network.py,
+        # evaluation/metric.py). Previously this only covered 7
+        # categories (missing tuberculosis/meningitis, used 'cardiac'
+        # instead of 'cardiac_event', and included a non-disease
+        # 'healthy' catch-all), which silently broke cross-module
+        # evaluation and ROC-AUC scoring. Values re-normalised to sum
+        # to 1.0 after adding the two missing diseases.
         self.priors = {
-            'flu':         0.13,
-            'covid19':     0.08,
-            'dengue':      0.05,
-            'cardiac':     0.04,
-            'diabetes':    0.09,
-            'common_cold': 0.24,
-            'malaria':     0.08,
-            'pneumonia':   0.07,
-            'healthy':     0.22,
+            'flu':           0.18,
+            'covid19':       0.10,
+            'dengue':        0.06,
+            'cardiac_event': 0.05,
+            'diabetes':      0.12,
+            'common_cold':   0.37,
+            'tuberculosis':  0.07,
+            'meningitis':    0.05,
         }
 
         # Likelihoods: P(Symptom | Disease)
@@ -47,7 +54,7 @@ class SimpleBayesianDiagnostics:
                 'cough': 0.15, 'loss_of_smell': 0.05,
                 'chest_pain': 0.05, 'body_aches': 0.88,
             },
-            'cardiac': {
+            'cardiac_event': {
                 'chest_pain': 0.92, 'shortness_of_breath': 0.88,
                 'fatigue': 0.70, 'sweating': 0.75,
                 'fever': 0.10, 'cough': 0.15, 'rash': 0.02,
@@ -65,34 +72,16 @@ class SimpleBayesianDiagnostics:
                 'loss_of_smell': 0.30, 'rash': 0.02,
                 'chest_pain': 0.05, 'joint_pain': 0.15,
             },
-            'malaria': {
-                'fever': 0.96,
-                'headache': 0.82,
-                'fatigue': 0.90,
-                'body_aches': 0.80,
-                'sweating': 0.88,
-                'joint_pain': 0.65,
-                'cough': 0.20,
-                'rash': 0.05,
-                'loss_of_smell': 0.02,
+            'tuberculosis': {
+                'cough': 0.95, 'weight_loss': 0.85, 'night_sweats': 0.80,
+                'fatigue': 0.88, 'fever': 0.70, 'chest_pain': 0.20,
+                'headache': 0.15, 'joint_pain': 0.10, 'rash': 0.02,
             },
-            'pneumonia': {
-                'fever': 0.92,
-                'cough': 0.94,
-                'chest_pain': 0.75,
-                'shortness_of_breath': 0.85,
-                'fatigue': 0.78,
-                'headache': 0.30,
-                'body_aches': 0.40,
-                'rash': 0.02,
-                'joint_pain': 0.08,
+            'meningitis': {
+                'headache': 0.95, 'stiff_neck': 0.90, 'fever': 0.92,
+                'light_sensitivity': 0.85, 'fatigue': 0.80, 'rash': 0.15,
+                'joint_pain': 0.05, 'cough': 0.10, 'chest_pain': 0.02,
             },
-            'healthy': {
-                'fever': 0.02, 'cough': 0.05, 'fatigue': 0.10,
-                'headache': 0.08, 'rash': 0.01, 'chest_pain': 0.01,
-                'joint_pain': 0.05, 'loss_of_smell': 0.01,
-                'body_aches': 0.05,
-            }
         }
 
     def compute_posterior(self,
@@ -126,61 +115,20 @@ class SimpleBayesianDiagnostics:
         sorted_dx   = sorted(posteriors.items(),
                              key=lambda x: x[1], reverse=True)
 
-        top_three = sorted_dx[:3]
-
         return {
-            'summary': f"Most likely diagnosis: {top_disease} ({top_prob:.2%})",
-            'diagnosis': top_disease,
+            'summary':    f"Top: {top_disease} ({top_prob:.2%})",
+            'diagnosis':  top_disease,
             'confidence': top_prob,
-            'top_three': top_three,
             'all_posteriors': posteriors,
-            'ranked_diagnoses': sorted_dx
+            'ranked_diagnoses': sorted_dx[:5]
         }
 
     def explain(self, disease: str, symptoms: List[str]) -> str:
-        symptoms_clean = [s.lower().replace(' ', '_') for s in symptoms]
-        likelihoods = self.likelihoods.get(disease, {})
-
-        output = []
-        output.append("=" * 40)
-        output.append(f"Diagnosis: {disease.upper()}")
-        output.append("=" * 40)
-        output.append(f"Prior Probability: {self.priors.get(disease, 0):.2f}")
-        output.append("")
-        output.append("Evidence:")
-
-        for symptom in symptoms_clean:
-            probability = likelihoods.get(symptom, 0.01)
-            output.append(
-                f"✓ {symptom.replace('_', ' ').title()} : {probability:.2f}"
-            )
-
-        output.append("")
-        output.append(
-            "The diagnosis was calculated using Bayesian probability "
-            "based on the patient's symptoms."
-        )
-
-        return "\n".join(output)
-
-
-if __name__ == "__main__":
-    model = SimpleBayesianDiagnostics()
-
-    symptoms = ["fever", "cough", "fatigue"]
-
-    results = model.compute_posterior(symptoms)
-
-    print("Posterior Probabilities")
-    print("-" * 40)
-
-    for disease, probability in sorted(
-        results.items(),
-        key=lambda x: x[1],
-        reverse=True
-    ):
-        print(f"{disease:15} : {probability:.4f}")
-
-    print()
-    best = max(results, key=results.get)
-    print(model.explain(best, symptoms))
+        symptoms_clean = [s.lower().replace(' ','_') for s in symptoms]
+        likelihoods    = self.likelihoods.get(disease, {})
+        evidence = [
+            f"P({s}|{disease})={likelihoods.get(s,0.01):.2f}"
+            for s in symptoms_clean
+        ]
+        return f"P({disease}) = {self.priors[disease]} × " + \
+               " × ".join(evidence)
