@@ -7,6 +7,8 @@ patient onboarding and use of the system. Instead of typing symptom
 names manually, users can click symptom checkboxes and fill in vitals.
 """
 
+import json
+import os
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
 
@@ -132,6 +134,8 @@ def setup_system() -> HealthcareDiagnosticAgent:
 
 class DiagnosticGUI:
     """Tkinter GUI for patient onboarding and displaying diagnosis results."""
+
+    SAVE_PATH = os.path.join("data", "patients.json")
 
     def __init__(self, root: tk.Tk, agent: HealthcareDiagnosticAgent):
         self.root = root
@@ -451,6 +455,81 @@ class DiagnosticGUI:
         self.confidence_label.configure(text="")
         self._set_report_text("")
         self.root.title("Healthcare Diagnostic Assistant")
+
+    def _ensure_save_dir(self):
+        """Create the data directory if it does not exist."""
+        save_dir = os.path.dirname(self.SAVE_PATH)
+        if save_dir and not os.path.exists(save_dir):
+            os.makedirs(save_dir, exist_ok=True)
+
+    def _patient_to_dict(self, patient: PatientPercept) -> dict:
+        return {
+            'patient_id': patient.patient_id,
+            'age': patient.age,
+            'temperature': patient.temperature,
+            'heart_rate': patient.heart_rate,
+            'blood_pressure': patient.blood_pressure,
+            'symptoms': patient.symptoms,
+            'timestamp': patient.timestamp,
+        }
+
+    def _save_patient_record(self, patient: PatientPercept):
+        """Save the patient record to the JSON file by appending a new entry."""
+        self._ensure_save_dir()
+
+        record = self._patient_to_dict(patient)
+
+        if os.path.exists(self.SAVE_PATH):
+            try:
+                with open(self.SAVE_PATH, "r", encoding="utf-8") as f:
+                    patients = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                patients = []
+        else:
+            patients = []
+
+        patients.append(record)
+
+        with open(self.SAVE_PATH, "w", encoding="utf-8") as f:
+            json.dump(patients, f, indent=2)
+
+    def run_diagnosis(self):
+        """Collect input, run the agent cycle, and display the report."""
+        try:
+            patient = self._collect_percept()
+        except ValueError as exc:
+            messagebox.showerror("Invalid Input", str(exc))
+            return
+
+        if not patient.symptoms:
+            messagebox.showwarning(
+                "No Symptoms Selected",
+                "Please select at least one symptom before running the diagnosis."
+            )
+            self.patient_count -= 1
+            return
+
+        # Save patient onboarding data immediately
+        self._save_patient_record(patient)
+
+        # Perceive -> Think -> Act Cycle
+        self.agent.perceive(patient)
+        think_results = self.agent.think()
+
+        # Retrieve diagnosis map safely
+        if not think_results and hasattr(self.agent, 'memory'):
+            think_results = getattr(
+                self.agent.memory,
+                'diagnosis_results',
+                getattr(self.agent, 'diagnosis_results', {})
+            )
+
+        try:
+            report = self.agent.act(think_results)
+        except TypeError:
+            report = self.agent.act()
+
+        self._display_report(report, patient)
 
 
 def main():
